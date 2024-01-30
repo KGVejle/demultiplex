@@ -231,11 +231,11 @@ workflow {
         .set { read_pairs_ch }
 
         read_pairs_ch
-        .filter {it =~/AV1/}
+        .filter {it =~/AV1/||it =~/MV1/}
         .set { av1_channel }
 
         read_pairs_ch
-        .filter {it =~/WG4/ ||it =~/WG3/ ||it =~/EV8/}
+        .filter {it =~/WG4/ ||it =~/WG3/ ||it =~/EV8/||it =~/LIB/}
         .set { rest_channel }
 
         av1_channel.concat(rest_channel)
