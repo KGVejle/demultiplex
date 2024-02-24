@@ -18,7 +18,7 @@ switch (params.gatk) {
     gatk_image="gatk4400.sif";
     break;
     default:
-    gatk_image="gatk419.sif";
+    gatk_image="gatk4400.sif";
     break;
 }
 
@@ -32,7 +32,7 @@ switch (params.server) {
         tmpDIR="/data/TMP/TMP.${user}/";
         gatk_exec="singularity run -B ${s_bind} ${simgpath}/${gatk_image} gatk";
         multiqc_config="/data/shared/programmer/configfiles/multiqc_config.yaml"
-        tank_storage="/home/mmaj/tank.kga/data/data.storage.archive/";
+        dataStorage="lnx01_data3/storage/";
         //modules_dir="/home/mmaj/scripts_lnx01/nextflow_lnx01/dsl2/modules/";
     break;
     case 'lnx01':
@@ -42,7 +42,7 @@ switch (params.server) {
         tmpDIR="/data/TMP/TMP.${user}/";
         gatk_exec="singularity run -B ${s_bind} ${simgpath}/${gatk_image} gatk";
         multiqc_config="/data/shared/programmer/configfiles/multiqc_config.yaml"
-        tank_storage="/home/mmaj/tank.kga2/data/data.storage.archive/";
+        dataStorage="lnx01_data3/storage/";
         modules_dir="/home/mmaj/scripts_lnx01/nextflow_lnx01/dsl2/modules/";
     break;
     case 'kga01':
@@ -51,7 +51,7 @@ switch (params.server) {
         tmpDIR="/data/TMP/TMP.${user}/";
         params.intervals_list="/data/shared/genomes/hg38/interval.files/WGS_splitIntervals/wgs_splitinterval_BWI_subdivision3/*.interval_list";
         gatk_exec="singularity run -B ${s_bind} ${simgpath}/${gatk_image} gatk";
-        tank_storage="/home/mmaj/tank.kga/data/data.storage.archive/";
+        dataStorage="/home/mmaj/tank.kga/data/data.storage.archive/";
         modules_dir="/home/mmaj/LNX01_mmaj/scripts_lnx01/nextflow_lnx01/dsl2/modules/";
     break;
 }
@@ -120,8 +120,8 @@ aln_output_dir="${params.outdir}/"
 fastq_dir="${params.outdir}/"
 }
 if (!params.localStorage) {
-aln_output_dir="${tank_storage}/alignedData/${params.genome}/novaRuns/"
-fastq_dir="${tank_storage}/fastq_storage/novaRuns/"
+aln_output_dir="${dataStorage}/alignedData/${params.genome}/novaRuns/2024/"
+fastq_dir="${dataStorage}/fastqStorage/novaRuns/"
 }
 
 
