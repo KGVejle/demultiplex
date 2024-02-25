@@ -279,7 +279,7 @@ process align {
 
     maxForks 10
     errorStrategy 'ignore'
-    cpus 20
+    cpus 30
 
     input:
     tuple val(sampleID), path(uBAM),  val(runfolder_basename), path(metrics)//  from ubamXT_out
