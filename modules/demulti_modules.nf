@@ -32,7 +32,7 @@ switch (params.server) {
         tmpDIR="/data/TMP/TMP.${user}/";
         gatk_exec="singularity run -B ${s_bind} ${simgpath}/${gatk_image} gatk";
         multiqc_config="/data/shared/programmer/configfiles/multiqc_config.yaml"
-        dataStorage="lnx01_data3/storage/";
+        dataStorage="/lnx01_data3/storage/";
         //modules_dir="/home/mmaj/scripts_lnx01/nextflow_lnx01/dsl2/modules/";
     break;
     case 'lnx01':
@@ -42,7 +42,7 @@ switch (params.server) {
         tmpDIR="/data/TMP/TMP.${user}/";
         gatk_exec="singularity run -B ${s_bind} ${simgpath}/${gatk_image} gatk";
         multiqc_config="/data/shared/programmer/configfiles/multiqc_config.yaml"
-        dataStorage="lnx01_data3/storage/";
+        dataStorage="/lnx01_data3/storage/";
         modules_dir="/home/mmaj/scripts_lnx01/nextflow_lnx01/dsl2/modules/";
     break;
     case 'kga01':
