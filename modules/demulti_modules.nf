@@ -231,8 +231,8 @@ process fastq_to_ubam {
     tag "$sampleID"
     //publishDir "${params.outdir}/unmappedBAM/", mode: 'copy',pattern: '*.{bam,bai}'
     //publishDir "${params.outdir}/${runfolder_basename}/fastq_symlinks/", mode: 'link', pattern:'*.{fastq,fq}.gz'
-    cpus 20
-    maxForks 10
+    cpus 2
+    maxForks 20
 
     input:
     tuple val(sampleID), path(r1),path(r2),val(runfolder_basename)// from sorted_input_ch1
@@ -279,7 +279,7 @@ process align {
 
     maxForks 10
     errorStrategy 'ignore'
-    cpus 30
+    cpus 40
 
     input:
     tuple val(sampleID), path(uBAM),  val(runfolder_basename), path(metrics)//  from ubamXT_out
@@ -315,7 +315,7 @@ process align {
 
 process markDup_cram {
     errorStrategy 'ignore'
-    maxForks 6
+    maxForks 8
     tag "$sampleID"
     publishDir "${aln_output_dir}/${runfolder_basename}/", mode: 'copy', pattern: "*.BWA.MD.cr*"
     
