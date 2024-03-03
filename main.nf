@@ -207,7 +207,6 @@ workflow PREPROCESS {
     markDup_cram(align.out)
     emit:
     finalAln=markDup_cram.out
-    finalAln.view()
 }
 
 workflow {
