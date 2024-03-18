@@ -414,7 +414,6 @@ workflow.onComplete {
             ${workDirMessage}
             OutputDir           : ${params.outdir ?: 'Not specified'}
             Exit status         : ${workflow.exitStatus}
-            Names               : ${names.join(', ')}
             """.stripIndent()
 
 
