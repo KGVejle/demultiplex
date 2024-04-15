@@ -8,7 +8,7 @@ date=new Date().format( 'yyMMdd' )
 params.rundir                   ="${launchDir.baseName}"            // get basename of dir where script is started
 params.outdir                   ='Results'                          // Default output folder.
 params.genome                   ="hg38"                             // Default assembly
-params.server                   ='kga01'                            // Default server
+params.server                   ='lnx01'                            // Default server
 
 // Unset parameters: 
 params.help                     =false
@@ -29,20 +29,6 @@ runID="${date}.${user}.demultiV1"
 runtype="demultiAndPreprocessV1"
 
 
-switch (params.server) {
-    case 'lnx01':
-        modules_dir="/home/mmaj/scripts_lnx01/nextflow_lnx01/dsl2/modules";
-        subworkflow_dir="/home/mmaj/scripts_lnx01/nextflow_lnx01/dsl2/subworkflows";
-    break;
-    case 'kga01':
-        modules_dir="/home/mmaj/LNX01_mmaj/scripts_lnx01/nextflow_lnx01/dsl2/modules";
-        subworkflow_dir="/home/mmaj/LNX01_mmaj/scripts_lnx01/nextflow_lnx01/dsl2/subworkflows";
-    break;
-}
-
-
-
-
 def helpMessage() {
     log.info"""
     General info:
@@ -52,10 +38,10 @@ def helpMessage() {
     PLEASE NOTE: The script will automatically perform preprocesssing and alignment of DNA samples. Fastq and aligned CRAM files will automatically be transferred to the long term storage location. This means no Fastq or aligned CRAM files will be found where the script is executed - only in the long term storage (dataArchive) location.
     
     The resulting CRAM files will be available from the data archive location from each server as read-only locations:
-    ../dataArchive/tank_kga_external_archive/alignedData/{genomeversion}/novaRuns/runfolder
+    ../dataArchive/lnx02/alignedData/{genomeversion}/novaRuns/runfolder
     
     The resulting FastQ files will be available from the data archive location from each server as read-only locations:
-    ../dataArchive/tank_kga_external_archive/fastq_storage/novaRuns/runfolder
+    ../dataArchive/lnx02/fastq_storage/novaRuns/runfolder
 
     Data can be stored locally in the folder where the script is started instead, by using the --localStorage option
 
@@ -96,8 +82,8 @@ def helpMessage() {
       --alignRNA            Align RNA samples (STAR 2-pass). Alignment will be run twice using the reccomended parameters for e.g. Arriba or STAR-fusion.
                                 Default: Do not align RNA samples.
 
-      --server              Choose server to run script from (lnx01 or kga01)
-                                Default: kga01
+      --server              Choose server to run script from (lnx01 or lnx02)
+                                Default: lnx01
 
       --genome               hg19 or hg38
                                 Default: hg38v3
