@@ -208,7 +208,7 @@ process bcl2fastq_RNA {
     path(runinfo)// from xml_ch2
 
     output:
-    path("RNA_fastq/*.fastq.gz"), emit: rna_fastq// into (rna_fq_out,rna_fq_out2)
+    path("*.fastq.gz"), emit: rna_fastq// into (rna_fq_out,rna_fq_out2)
 
     script:
     """
@@ -217,9 +217,9 @@ process bcl2fastq_RNA {
     --runfolder-dir ${runfolder} \
     --use-bases-mask ${rnaMask} \
     --no-lane-splitting \
-    -o RNA_fastq
+    -o .
 
-    rm -rf RNA_fastq/Undetermined*
+    rm -rf Undetermined*
     """
 }
 
