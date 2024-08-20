@@ -56,6 +56,20 @@ switch (params.server) {
     break;
 }
 
+switch ($user) {
+    case 'mmaj':
+        permissions="full";
+    break;
+    
+    case 'raspau':
+        permissions="full";
+    break;
+    
+    default:
+        permissions="reduced";
+    break;
+
+}
 
 switch (params.genome) {
     case 'hg19':
@@ -115,11 +129,11 @@ if (params.useBasesMask) {
 }
 
 
-if (params.localStorage) {
+if (params.localStorage || $permissions!="full") {
 aln_output_dir="${params.outdir}/"
 fastq_dir="${params.outdir}/"
 }
-if (!params.localStorage) {
+if (!params.localStorage && $permissions=="full") {
 aln_output_dir="${dataStorage}/alignedData/${params.genome}/novaRuns/2024/"
 fastq_dir="${dataStorage}/fastqStorage/novaRuns/"
 }
