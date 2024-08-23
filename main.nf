@@ -6,7 +6,7 @@ date=new Date().format( 'yyMMdd' )
 
 // Preset (default) parameters:
 params.rundir                   ="${launchDir.baseName}"            // get basename of dir where script is started
-params.outdir                   ='Results'                          // Default output folder.
+params.outdir                   ='Demultiplexing_results'           // Default output folder.
 params.genome                   ="hg38"                             // Default assembly
 params.server                   ='lnx01'                            // Default server
 
