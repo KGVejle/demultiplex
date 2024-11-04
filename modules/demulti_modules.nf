@@ -55,7 +55,7 @@ switch (params.server) {
         modules_dir="/home/mmaj/LNX01_mmaj/scripts_lnx01/nextflow_lnx01/dsl2/modules/";
     break;
 }
-
+/*
 switch ($user) {
     case 'mmaj':
         permissions="full";
@@ -70,7 +70,7 @@ switch ($user) {
     break;
 
 }
-
+*/
 switch (params.genome) {
     case 'hg19':
         assembly="hg19"
