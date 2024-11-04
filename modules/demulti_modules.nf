@@ -129,11 +129,11 @@ if (params.useBasesMask) {
 }
 
 
-if (params.localStorage || $permissions!="full") {
+if (params.localStorage ) {
 aln_output_dir="${params.outdir}/"
 fastq_dir="${params.outdir}/"
 }
-if (!params.localStorage && $permissions=="full") {
+if (!params.localStorage) {
 aln_output_dir="${dataStorage}/alignedData/${params.genome}/novaRuns/2024/"
 fastq_dir="${dataStorage}/fastqStorage/novaRuns/"
 }
