@@ -23,36 +23,24 @@ switch (params.gatk) {
 }
 
 
-switch (params.server) {
 
-    case 'lnx02':
-        s_bind="/data/:/data/,/lnx01_data2/:/lnx01_data2/,/fast/:/fast/,/lnx01_data3/:/lnx01_data3/";
-        simgpath="/data/shared/programmer/simg";
-        params.intervals_list="/data/shared/genomes/hg38/interval.files/WGS_splitIntervals/wgs_splitinterval_BWI_subdivision3/*.interval_list";
-        tmpDIR="/data/TMP/TMP.${user}/";
-        gatk_exec="singularity run -B ${s_bind} ${simgpath}/${gatk_image} gatk";
-        multiqc_config="/data/shared/programmer/configfiles/multiqc_config.yaml"
-        dataStorage="/lnx01_data3/storage/";
-        //modules_dir="/home/mmaj/scripts_lnx01/nextflow_lnx01/dsl2/modules/";
-    break;
+
+switch (params.server) {
     case 'lnx01':
         s_bind="/data/:/data/,/lnx01_data2/:/lnx01_data2/";
         simgpath="/data/shared/programmer/simg";
         params.intervals_list="/data/shared/genomes/hg38/interval.files/WGS_splitIntervals/wgs_splitinterval_BWI_subdivision3/*.interval_list";
         tmpDIR="/data/TMP/TMP.${user}/";
         gatk_exec="singularity run -B ${s_bind} ${simgpath}/${gatk_image} gatk";
-        multiqc_config="/data/shared/programmer/configfiles/multiqc_config.yaml"
-        dataStorage="/lnx01_data3/storage/";
-        modules_dir="/home/mmaj/scripts_lnx01/nextflow_lnx01/dsl2/modules/";
+        refFilesDir="/data/shared/genomes";
     break;
-    case 'kga01':
+    default:
+        s_bind="/data/:/data/,/lnx01_data2/:/lnx01_data2/,/fast/:/fast/,/lnx01_data3/:/lnx01_data3/,/lnx01_data4/:/lnx01_data4/";
         simgpath="/data/shared/programmer/simg";
-        s_bind="/data/:/data/";
-        tmpDIR="/data/TMP/TMP.${user}/";
         params.intervals_list="/data/shared/genomes/hg38/interval.files/WGS_splitIntervals/wgs_splitinterval_BWI_subdivision3/*.interval_list";
+        tmpDIR="/fast/TMP/TMP.${user}/";
         gatk_exec="singularity run -B ${s_bind} ${simgpath}/${gatk_image} gatk";
-        dataStorage="/home/mmaj/tank.kga/data/data.storage.archive/";
-        modules_dir="/home/mmaj/LNX01_mmaj/scripts_lnx01/nextflow_lnx01/dsl2/modules/";
+        refFilesDir="/fast/shared/genomes";
     break;
 }
 
@@ -100,6 +88,8 @@ switch (params.genome) {
         break;
 }
 
+dataStorage="/lnx01_data3/storage/"
+
 
 if (!params.useBasesMask && !params.RNA) {
   dnaMask="Y*,I8nnnnnnnnn,I8,Y*"
@@ -119,9 +109,11 @@ if (params.localStorage) {
 aln_output_dir="${params.outdir}/"
 fastq_dir="${params.outdir}/"
 }
+
 if (!params.localStorage) {
-aln_output_dir="${dataStorage}/alignedData/${params.genome}/novaRuns/2024/"
+aln_output_dir="${dataStorage}/alignedData/${params.genome}/novaRuns/2025/"
 fastq_dir="${dataStorage}/fastqStorage/novaRuns/"
+qc_dir="${dataStorage}/fastqStorage/demultiQC/"
 }
 
 
@@ -146,19 +138,21 @@ process prepare_DNA_samplesheet {
     tuple val(samplesheet_basename), path(samplesheet)// from original_samplesheet1
 
     output:
-    path("*.DNA_SAMPLES.csv")// into dnaSS1
-
+    path("*.DNA_SAMPLES.csv"), emit: std
+    path("*.UMI.csv"), emit: umi
     shell:
     '''
     cat !{samplesheet} | grep -v "RV1" > !{samplesheet_basename}.DNA_SAMPLES.csv
+    sed 's/Settings]/&\nOverrideCycles,${umiConvertDNA}\nNoLaneSplitting,true\nTrimUMI,0\nCreateFastqIndexForReads,1/' !{samplesheet_basename}.DNA_SAMPLES.csv > !{samplesheet_basename}.DNA_SAMPLES.UMI.csv
     '''
 }
 
-process bcl2fastq_DNA {
+process bclConvert_DNA {
     tag "$runfolder_simplename"
     errorStrategy 'ignore'
 
-    publishDir "${fastq_dir}/${runfolder_simplename}/", mode: 'copy'
+    publishDir "${fastq_dir}/${runfolder_simplename}_UMI/", mode: 'copy', pattern:"*.fastq.gz"
+    publishDir "${qc_dir}/${runfolder_simplename}_UMI/", mode: 'copy', pattern:"*.DNA.html"
 
     input:
     tuple val(runfolder_simplename), path(runfolder)// from runfolder_ch2
@@ -167,19 +161,26 @@ process bcl2fastq_DNA {
 
     output:
     path("*.fastq.gz"), emit: dna_fastq// into (dna_fq_out,dna_fq_out2)
-
+    path("${runfolder_simplename}.DemultiplexRunStats.Multiqc.DNA.html")
     script:
     """
-    bcl2fastq \
+    bcl-convert \
     --sample-sheet ${dnaSS} \
-    --runfolder-dir ${runfolder} \
+    --bcl-input-directory ${runfolder} \
     --use-bases-mask ${dnaMask} \
-    --no-lane-splitting \
     -o .
 
+    singularity run -B ${s_bind} ${simgpath}/multiqc.sif \
+    -c ${multiqc_config} \
+    -f -q  ${launchDir}/*/QC/DNA/ \
+    -n ${runfolder_simplename}.DemultiplexRunStats.Multiqc.DNA.html
+
     rm -rf Undetermined*
+
+
     """
 }
+
 
 process prepare_RNA_samplesheet {
 
@@ -233,7 +234,6 @@ process fastq_to_ubam {
     //publishDir "${params.outdir}/${runfolder_basename}/fastq_symlinks/", mode: 'link', pattern:'*.{fastq,fq}.gz'
     cpus 2
     maxForks 30
-
     input:
     tuple val(sampleID), path(r1),path(r2),val(runfolder_basename)// from sorted_input_ch1
 
@@ -253,6 +253,37 @@ process fastq_to_ubam {
     -O ${sampleID}.unmapped.from.fq.bam
     """
 }
+
+process fastq_to_ubam_UMI {
+    errorStrategy 'ignore'
+    tag "$sampleID"
+    //publishDir "${params.outdir}/unmappedBAM/", mode: 'copy',pattern: '*.{bam,bai}'
+    //publishDir "${params.outdir}/${runfolder_basename}/fastq_symlinks/", mode: 'link', pattern:'*.{fastq,fq}.gz'
+    cpus 2
+    maxForks 30
+    conda '/lnx01_data3/shared/programmer/miniconda3/envs/fgbio/' 
+    input:
+    tuple val(sampleID), path(r1),path(r2),val(runfolder_basename)// from sorted_input_ch1
+
+    output:
+    tuple val(sampleID), path("${sampleID}.unmapped.from.fq.bam"), val(runfolder_basename)// into (ubam_out1, ubam_out2)
+    tuple path(r1),path(r2)
+    
+    script:
+    """
+    ${gatk_exec} FastqToSam \
+    -F1 ${r1} \
+    -F2 ${r2} \
+    -SM ${sampleID} \
+    -PL illumina \
+    -PU KGA_PU \
+    -RG KGA_RG \
+    -O ${sampleID}.unmapped.from.fq.bam
+    """
+}
+
+
+
 process markAdapters {
     tag "$sampleID"
     errorStrategy 'ignore'

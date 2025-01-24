@@ -138,6 +138,19 @@ if (params.useBasesMask) {
   params.DNA=true
 }
 
+if (params.RNA) {
+    umiConvertDNA="Y151;I8N2U9;I8N2;Y151"
+    umiConvertRNA="Y151;I10U9;I10;Y151"
+}
+
+if (!params.RNA) {
+    umiConvertDNA="Y151;I8U9;I8;Y151"
+
+}
+
+
+
+
 log.info """\
 =======================================
 KGA Vejle demultiplex and Preprocess v1
@@ -179,14 +192,15 @@ workflow DEMULTIPLEX {
     main:
     if (params.DNA) {
         prepare_DNA_samplesheet(original_samplesheet)
-        bcl2fastq_DNA(runfolder_ch, prepare_DNA_samplesheet.out, xml_ch)
+        //bcl2fastq_DNA(runfolder_ch, prepare_DNA_samplesheet.out, xml_ch)
+        bclConvert_DNA(runfolder_ch, prepare_DNA_samplesheet.out.umi, xml_ch)
     }
     if (params.RNA) {
         prepare_RNA_samplesheet(original_samplesheet)
         bcl2fastq_RNA(runfolder_ch, prepare_RNA_samplesheet.out, xml_ch)
     }
     emit: 
-    dna_fastq=bcl2fastq_DNA.out.dna_fastq
+    dna_fastq=bclConvert_DNA.out.dna_fastq
 }
 
 workflow PREPROCESS {
@@ -239,6 +253,8 @@ workflow {
 }
 
 
+
+/*
 workflow.onComplete {
 
     // Extract the first six digits from the samplesheet name
@@ -275,3 +291,4 @@ workflow.onComplete {
     }
 }
 
+*/
