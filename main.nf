@@ -138,6 +138,7 @@ if (params.useBasesMask) {
   params.DNA=true
 }
 
+/*
 if (params.RNA) {
     umiConvertDNA="Y151;I8N2U9;I8N2;Y151"
     umiConvertRNA="Y151;I10U9;I10;Y151"
@@ -147,7 +148,7 @@ if (!params.RNA) {
     umiConvertDNA="Y151;I8U9;I8;Y151"
 
 }
-
+*/
 
 
 
