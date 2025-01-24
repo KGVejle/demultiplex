@@ -191,18 +191,19 @@ process bclConvert_DNA {
     path(runinfo) // from xml_ch
 
     output:
-    path("*.fastq.gz"), emit: dna_fastq// into (dna_fq_out,dna_fq_out2)
+    path("${runfolder_simplename}_umi/*.fastq.gz"), emit: dna_fastq// into (dna_fq_out,dna_fq_out2)
     path("${runfolder_simplename}.DemultiplexRunStats.Multiqc.DNA.html")
     script:
     """
     bcl-convert \
     --sample-sheet ${dnaSS} \
     --bcl-input-directory ${runfolder} \
-    -o .
-
+    --output-directory ${runfolder_simplename}_umi/
+    rm -rf Undetermined*
+    
     singularity run -B ${s_bind} ${simgpath}/multiqc.sif \
     -c ${multiqc_config} \
-    -f -q  ${launchDir}/*/QC/DNA/ \
+    -f -q . \
     -n ${runfolder_simplename}.DemultiplexRunStats.Multiqc.DNA.html
 
     rm -rf Undetermined*
