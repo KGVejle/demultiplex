@@ -140,12 +140,29 @@ process prepare_DNA_samplesheet {
     output:
     path("*.DNA_SAMPLES.csv"), emit: std
     path("*.UMI.csv"), emit: umi
+    script:
+    """
+    cat ${samplesheet} | grep -v "RV1" > ${samplesheet_basename}.DNA_SAMPLES.csv
+
+    sed 's/Settings]/&\nOverrideCycles,${umiConvertDNA}\nNoLaneSplitting,true\nTrimUMI,0\nCreateFastqIndexForReads,1/' ${samplesheet_basename}.DNA_SAMPLES.csv > !{samplesheet_basename}.DNA_SAMPLES.UMI.csv
+    """
+}
+/*
+process prepare_DNA_samplesheet {
+
+    input:
+    tuple val(samplesheet_basename), path(samplesheet)// from original_samplesheet1
+
+    output:
+    path("*.DNA_SAMPLES.csv"), emit: std
+    path("*.UMI.csv"), emit: umi
     shell:
     '''
     cat !{samplesheet} | grep -v "RV1" > !{samplesheet_basename}.DNA_SAMPLES.csv
     sed 's/Settings]/&\nOverrideCycles,!{umiConvertDNA}\nNoLaneSplitting,true\nTrimUMI,0\nCreateFastqIndexForReads,1/' !{samplesheet_basename}.DNA_SAMPLES.csv > !{samplesheet_basename}.DNA_SAMPLES.UMI.csv
     '''
 }
+*/
 
 process bclConvert_DNA {
     tag "$runfolder_simplename"
@@ -167,7 +184,6 @@ process bclConvert_DNA {
     bcl-convert \
     --sample-sheet ${dnaSS} \
     --bcl-input-directory ${runfolder} \
-    --use-bases-mask ${dnaMask} \
     -o .
 
     singularity run -B ${s_bind} ${simgpath}/multiqc.sif \
