@@ -104,6 +104,19 @@ if (params.useBasesMask) {
   params.DNA=true
 }
 
+if (params.RNA) {
+    umiConvertDNA="Y151;I8N2U9;I8N2;Y151"
+    umiConvertRNA="Y151;I10U9;I10;Y151"
+}
+
+if (!params.RNA) {
+    umiConvertDNA="Y151;I8U9;I8;Y151"
+
+}
+
+
+
+
 
 if (params.localStorage) {
 aln_output_dir="${params.outdir}/"
@@ -141,6 +154,7 @@ process prepare_DNA_samplesheet {
     path("*.DNA_SAMPLES.csv"), emit: std
     path("*.UMI.csv"), emit: umi
     script:
+
     """
     cat ${samplesheet} | grep -v "RV1" > ${samplesheet_basename}.DNA_SAMPLES.csv
 
