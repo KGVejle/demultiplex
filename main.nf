@@ -171,7 +171,7 @@ channel.fromPath(params.samplesheet)
 include {      
          // Preprocess tools:
          prepare_DNA_samplesheet;
-         bcl2fastq_DNA;
+         bclConvert_DNA;
          prepare_RNA_samplesheet; 
          bcl2fastq_RNA;
          fastq_to_ubam;
