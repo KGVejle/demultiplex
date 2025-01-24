@@ -158,7 +158,7 @@ process prepare_DNA_samplesheet {
     """
     cat ${samplesheet} | grep -v "RV1" > ${samplesheet_basename}.DNA_SAMPLES.csv
 
-    sed 's/Settings]/&\nOverrideCycles,${umiConvertDNA}\nNoLaneSplitting,true\nTrimUMI,0\nCreateFastqIndexForReads,1/' ${samplesheet_basename}.DNA_SAMPLES.csv > !{samplesheet_basename}.DNA_SAMPLES.UMI.csv
+    sed 's/Settings]/&\nOverrideCycles,${umiConvertDNA}\nNoLaneSplitting,true\nTrimUMI,0\nCreateFastqIndexForReads,1/' ${samplesheet_basename}.DNA_SAMPLES.csv > ${samplesheet_basename}.DNA_SAMPLES.UMI.csv
     """
 }
 /*
