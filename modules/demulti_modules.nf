@@ -232,7 +232,7 @@ process prepare_RNA_samplesheet {
 process bcl2fastq_RNA {
     tag "$runfolder_simplename"
     errorStrategy 'ignore'
-    publishDir "${fastq_dir}/${runfolder_simplename}_umi/", mode: 'copy'
+    publishDir "${fastq_dir}/${runfolder_simplename}_UMI/", mode: 'copy'
 
     input:
     tuple val(runfolder_simplename), path(runfolder)// from runfolder_ch3
