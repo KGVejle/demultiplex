@@ -89,7 +89,7 @@ switch (params.genome) {
 }
 
 dataStorage="/lnx01_data3/storage/"
-
+multiqc_config="/data/shared/programmer/configfiles/multiqc_config_tumorBoard.yaml"
 
 if (!params.useBasesMask && !params.RNA) {
   dnaMask="Y*,I8nnnnnnnnn,I8,Y*"
