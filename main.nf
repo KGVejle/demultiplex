@@ -224,17 +224,6 @@ workflow {
     DEMULTIPLEX(original_samplesheet, xml_ch)
 
     DEMULTIPLEX.out.dna_fastq.view()
-        | map { id, reads -> 
-        (sample, ngstype)   = reads[0].baseName.tokenize("-")
-        (panel,subpanel)    = ngstype.tokenize("_")
-        meta = [id:sample+"_"+ngstype, npn:sample, fullpanel:ngstype,panel:panel, subpanel:subpanel]
-        [meta, reads]
-    }   
-        | set { reads_meta_ch}
-    
-reads_meta_ch.view()
-
-    Channel.fromFilePairs(DEMULTIPLEX.out.dna_fastq, checkIfExists: true)
 
     if (params.DNA && !params.skipAlign){
 
