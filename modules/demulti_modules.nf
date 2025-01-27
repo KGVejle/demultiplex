@@ -90,7 +90,7 @@ switch (params.genome) {
 
 dataStorage="/lnx01_data3/storage/"
 multiqc_config="/data/shared/programmer/configfiles/multiqc_config_tumorBoard.yaml"
-
+/*
 if (!params.useBasesMask && !params.RNA) {
   dnaMask="Y*,I8nnnnnnnnn,I8,Y*"
 }
@@ -103,6 +103,7 @@ if (params.useBasesMask) {
   dnaMask=params.useBasesMask
   params.DNA=true
 }
+*/
 
 if (params.RNA) {
     umiConvertDNA="Y151;I8N2U9;I8N2;Y151"
@@ -114,6 +115,10 @@ if (!params.RNA) {
 
 }
 
+if (!params.DNA) {
+    umiConvertDNA="Y151;I10U9;I10;Y151"
+
+}
 
 
 
@@ -121,6 +126,7 @@ if (!params.RNA) {
 if (params.localStorage) {
 aln_output_dir="${params.outdir}/"
 fastq_dir="${params.outdir}/"
+qc_dir="${params.outdir}/QC/"
 }
 
 if (!params.localStorage) {
@@ -132,7 +138,8 @@ qc_dir="${dataStorage}/fastqStorage/demultiQC/"
 
 log.info """\
 ===============================================
-Clinical Genetics Vejle: NF DSL2 modules v2
+Clinical Genetics Vejle: Demultiplexing v2
+Last updated: feb. 2025
 Parameter information 
 ===============================================
 Genome       : $params.genome
@@ -218,17 +225,54 @@ process prepare_RNA_samplesheet {
     input:
     tuple val(samplesheet_basename), path(samplesheet)// from original_samplesheet2
     output:
-    path("*.RNA_SAMPLES.csv")// into rnaSS1    
+    path("*.RNA_SAMPLES.csv"), emit: std
+    path("*.UMI.csv"),emit: umi// into rnaSS1    
 
-    shell:
-    '''
+    script:
+    """
 
-    cat !{samplesheet} | grep "RV1" > !{samplesheet_basename}.RNAsamples.intermediate.txt
-    sed -n '1,/Sample_ID/p' !{samplesheet} > !{samplesheet_basename}.HEADER.txt
-    cat !{samplesheet_basename}.HEADER.txt !{samplesheet_basename}.RNAsamples.intermediate.txt > !{samplesheet_basename}.RNA_SAMPLES.csv 
-    '''
+    cat ${samplesheet} | grep "RV1" > ${samplesheet_basename}.RNAsamples.intermediate.txt
+    sed -n '1,/Sample_ID/p' ${samplesheet} > ${samplesheet_basename}.HEADER.txt
+    cat ${samplesheet_basename}.HEADER.txt ${samplesheet_basename}.RNAsamples.intermediate.txt > ${samplesheet_basename}.RNA_SAMPLES.csv 
+
+    sed 's/Settings]/&\\nOverrideCycles,${umiConvertDNA}\\nNoLaneSplitting,true\\nTrimUMI,0\\nCreateFastqIndexForReads,1/' ${samplesheet_basename}.RNA_SAMPLES.csv > ${samplesheet_basename}.RNA_SAMPLES.UMI.csv
+    """
 }
 
+
+process bclConvert_RNA {
+    tag "$runfolder_simplename"
+    errorStrategy 'ignore'
+
+    publishDir "${fastq_dir}/${runfolder_simplename}_UMI/", mode: 'copy', pattern:"*.fastq.gz"
+    publishDir "${qc_dir}/${runfolder_simplename}_UMI/", mode: 'copy', pattern:"*.RNA.html"
+
+    input:
+    tuple val(runfolder_simplename), path(runfolder)// from runfolder_ch2
+    path(rnaSS) // from dnaSS1
+    path(runinfo) // from xml_ch
+
+    output:
+    path("${runfolder_simplename}_umi/*.fastq.gz"), emit: rna_fastq// into (dna_fq_out,dna_fq_out2)
+    path("${runfolder_simplename}.DemultiplexRunStats.Multiqc.RNA.html")
+    script:
+    """
+    bcl-convert \
+    --sample-sheet ${rnaSS} \
+    --bcl-input-directory ${runfolder} \
+    --output-directory ${runfolder_simplename}_umi/
+    rm -rf Undetermined*
+    
+    singularity run -B ${s_bind} ${simgpath}/multiqc.sif \
+    -c ${multiqc_config} \
+    -f -q . \
+    -n ${runfolder_simplename}.DemultiplexRunStats.Multiqc.RNA.html
+
+    rm -rf Undetermined*
+    """
+}
+
+/*
 process bcl2fastq_RNA {
     tag "$runfolder_simplename"
     errorStrategy 'ignore'
@@ -254,65 +298,39 @@ process bcl2fastq_RNA {
     rm -rf RNA_fastq/Undetermined*
     """
 }
-
+*/
 
 ///////////////////////////////// PREPROCESS MODULES //////////////////////// 
 
-process fastq_to_ubam {
+process fastq_to_ubam_umi {
     errorStrategy 'ignore'
     tag "$sampleID"
     //publishDir "${params.outdir}/unmappedBAM/", mode: 'copy',pattern: '*.{bam,bai}'
     //publishDir "${params.outdir}/${runfolder_basename}/fastq_symlinks/", mode: 'link', pattern:'*.{fastq,fq}.gz'
     cpus 2
     maxForks 30
+    conda '/lnx01_data3/shared/programmer/miniconda3/envs/fgbio/'
+
     input:
     tuple val(sampleID), path(r1),path(r2),val(runfolder_basename)// from sorted_input_ch1
-
+    tuple val(meta), path(data)
+    
     output:
     tuple val(sampleID), path("${sampleID}.unmapped.from.fq.bam"), val(runfolder_basename)// into (ubam_out1, ubam_out2)
-    tuple path(r1),path(r2)
+    tuple val(meta), path(data),                                emit: fastq       
+    tuple val(meta), path("${meta.id}.unmapped.from.fq.bam"),   emit: unmappedBam
     
     script:
     """
-    ${gatk_exec} FastqToSam \
-    -F1 ${r1} \
-    -F2 ${r2} \
-    -SM ${sampleID} \
-    -PL illumina \
-    -PU KGA_PU \
-    -RG KGA_RG \
-    -O ${sampleID}.unmapped.from.fq.bam
+    fgbio FastqToBam \
+    -i ${data} \
+    -n \
+    --sample ${meta.id} \
+    --library ${meta.npn} \
+    --read-group-id KGA_RG \
+    -O ${meta.id}.unmapped.from.fq.bam
     """
 }
-
-process fastq_to_ubam_UMI {
-    errorStrategy 'ignore'
-    tag "$sampleID"
-    //publishDir "${params.outdir}/unmappedBAM/", mode: 'copy',pattern: '*.{bam,bai}'
-    //publishDir "${params.outdir}/${runfolder_basename}/fastq_symlinks/", mode: 'link', pattern:'*.{fastq,fq}.gz'
-    cpus 2
-    maxForks 30
-    conda '/lnx01_data3/shared/programmer/miniconda3/envs/fgbio/' 
-    input:
-    tuple val(sampleID), path(r1),path(r2),val(runfolder_basename)// from sorted_input_ch1
-
-    output:
-    tuple val(sampleID), path("${sampleID}.unmapped.from.fq.bam"), val(runfolder_basename)// into (ubam_out1, ubam_out2)
-    tuple path(r1),path(r2)
-    
-    script:
-    """
-    ${gatk_exec} FastqToSam \
-    -F1 ${r1} \
-    -F2 ${r2} \
-    -SM ${sampleID} \
-    -PL illumina \
-    -PU KGA_PU \
-    -RG KGA_RG \
-    -O ${sampleID}.unmapped.from.fq.bam
-    """
-}
-
 
 
 process markAdapters {

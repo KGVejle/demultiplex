@@ -174,7 +174,7 @@ include {
          prepare_DNA_samplesheet;
          bclConvert_DNA;
          prepare_RNA_samplesheet; 
-         bcl2fastq_RNA;
+         bclConvert_RNA;
          fastq_to_ubam;
          markAdapters;
          align;
@@ -198,10 +198,11 @@ workflow DEMULTIPLEX {
     }
     if (params.RNA) {
         prepare_RNA_samplesheet(original_samplesheet)
-        bcl2fastq_RNA(runfolder_ch, prepare_RNA_samplesheet.out, xml_ch)
+        bclConvert_RNA(runfolder_ch, prepare_RNA_samplesheet.out.umi, xml_ch)
     }
     emit: 
     dna_fastq=bclConvert_DNA.out.dna_fastq
+    rna_fastq=bclConvert_RNA.out.rna_fastq
 }
 
 workflow PREPROCESS {
@@ -238,6 +239,7 @@ workflow {
         .combine(runfolder_simplename)
         .set { read_pairs_ch }
 
+
         read_pairs_ch
         .filter {it =~/AV1/||it =~/MV1/}
         .set { av1_channel }
@@ -248,7 +250,7 @@ workflow {
 
         av1_channel.concat(rest_channel)
         .set { std_fq_input_ch }
-
+        std_fq_input_ch.view()
     PREPROCESS(std_fq_input_ch)
     }
 }
