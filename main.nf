@@ -173,6 +173,7 @@ include {
          // Preprocess tools:
          prepare_DNA_samplesheet;
          bclConvert_DNA;
+         fastq_to_ubam_umi;
          prepare_RNA_samplesheet; 
          bclConvert_RNA;
          fastq_to_ubam;
