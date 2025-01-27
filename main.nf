@@ -213,7 +213,7 @@ workflow PREPROCESS {
     
     main:
     fastq_to_ubam_umi(std_fq_input_ch)
-    markAdapters(fastq_to_ubam.out[0])
+    markAdapters(fastq_to_ubam_umi.out[0])
     align(markAdapters.out)
     markDup_cram(align.out)
     emit:
