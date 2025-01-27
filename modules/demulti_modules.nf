@@ -189,7 +189,7 @@ process bclConvert_DNA {
     tag "$runfolder_simplename"
     errorStrategy 'ignore'
 
-    publishDir "${fastq_dir}/${runfolder_simplename}_UMI/", mode: 'copy', pattern:"*.fastq.gz"
+    publishDir "${fastq_dir}/${runfolder_simplename}_UMI/", mode: 'copy', pattern:"${runfolder_simplename}_umi/*.fastq.gz"
     publishDir "${qc_dir}/${runfolder_simplename}_UMI/", mode: 'copy', pattern:"*.DNA.html"
 
     input:
