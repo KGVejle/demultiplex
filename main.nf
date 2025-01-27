@@ -176,7 +176,6 @@ include {
          fastq_to_ubam_umi;
          prepare_RNA_samplesheet; 
          bclConvert_RNA;
-         fastq_to_ubam;
          markAdapters;
          align;
          markDup_cram;
