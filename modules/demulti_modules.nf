@@ -206,16 +206,13 @@ process bclConvert_DNA {
     --sample-sheet ${dnaSS} \
     --bcl-input-directory ${runfolder} \
     --output-directory ${runfolder_simplename}_umi/
-    rm -rf Undetermined*
     
     singularity run -B ${s_bind} ${simgpath}/multiqc.sif \
     -c ${multiqc_config} \
-    -f -q . \
+    -f -q ${runfolder_simplename}_umi/ \
     -n ${runfolder_simplename}.DemultiplexRunStats.Multiqc.DNA.html
 
-    rm -rf Undetermined*
-
-
+    rm -rf ${runfolder_simplename}_umi/Undetermined*
     """
 }
 
@@ -261,14 +258,13 @@ process bclConvert_RNA {
     --sample-sheet ${rnaSS} \
     --bcl-input-directory ${runfolder} \
     --output-directory ${runfolder_simplename}_umi/
-    rm -rf Undetermined*
     
     singularity run -B ${s_bind} ${simgpath}/multiqc.sif \
     -c ${multiqc_config} \
-    -f -q . \
+    -f -q ${runfolder_simplename}_umi/ \
     -n ${runfolder_simplename}.DemultiplexRunStats.Multiqc.RNA.html
 
-    rm -rf Undetermined*
+    rm -rf ${runfolder_simplename}_umi/Undetermined*
     """
 }
 
