@@ -266,7 +266,7 @@ workflow {
 
         readsInputReMerged.view()
 
-    PREPROCESS(readsInputReMerged)
+    //PREPROCESS(readsInputReMerged)
     }
 }
 /*
