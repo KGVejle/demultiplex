@@ -228,6 +228,57 @@ workflow {
     if (params.DNA && !params.skipAlign){
 
         DEMULTIPLEX.out.dna_fastq.flatten()
+        | filter {it =~/_R1_/}
+        | map { tuple (it.baseName.tokenize("-").get(0), it) }
+    // |view
+        | set {r1}    
+
+        DEMULTIPLEX.out.dna_fastq.flatten()
+        | filter {it =~/_R2_/}
+        | map { tuple (it.baseName.tokenize("-").get(0), it) }
+        //|view
+        | set {r2}
+       
+        r1.join(r2).combine(runfolder_simplename)
+        | map {npn, r1, r2,runfolder ->
+            superpanel=r1.baseName.tokenize("-").get(1)
+            (panel,subpanel)=superpanel.tokenize("_")
+            meta = [npn:npn,id:npn+"_"+superpanel, superpanel:superpanel, panel:panel, subpanel:subpanel,runfolder:runfolder]
+            tuple(meta, [r1, r2])
+        }  
+        | branch {meta, reads ->
+                EV8: (meta.panel=~/EV8/||meta.panel=~/EV7/)
+                    return [meta + [datatype:"targeted",roi:"$WES_ROI"] ,reads]
+                AV1PL: (meta.superpanel==/AV1_CV6PL/)
+                    return [meta + [datatype:"targeted",roi:"$AV1_ROI"] ,reads]
+                MV1: (meta.superpanel==/MV1/)
+                    return [meta + [datatype:"targeted",roi:"$MV1_ROI"] ,reads]
+                WGS: (meta.superpanel=~/WG4/||meta.superpanel=~/WGS/)
+                    return [meta + [datatype:"WGS",roi:"$WES_ROI"] ,reads]
+                undetermined: true
+                    return [meta + [datatype:"targeted",roi:"$AV1_ROI"] ,reads]      
+        }
+
+        | set {readsInputBranched}
+        
+        readsInputBranched.undetermined.concat(readsInputBranched.MV1).concat(readsInputBranched.EV8).concat(readsInputBranched.WGS)
+        | set {readsInputReMerged}
+
+        readsInputReMerged.view()
+
+    PREPROCESS(readsInputReMerged)
+    }
+}
+/*
+workflow {
+
+    DEMULTIPLEX(original_samplesheet, xml_ch)
+
+    DEMULTIPLEX.out.dna_fastq.view()
+
+    if (params.DNA && !params.skipAlign){
+
+        DEMULTIPLEX.out.dna_fastq.flatten()
         .filter {it =~/_R1_/}
         .map { tuple(it.baseName.tokenize('-').get(0)+"_"+it.baseName.tokenize('-').get(1),it) }
         .set { sampleid_R1 }
@@ -257,6 +308,7 @@ workflow {
     }
 }
 
+*/
 
 
 /*

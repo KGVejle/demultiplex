@@ -298,36 +298,34 @@ process bcl2fastq_RNA {
 
 ///////////////////////////////// PREPROCESS MODULES //////////////////////// 
 
-process fastq_to_ubam_umi {
+
+process fastq_to_ubam {
     errorStrategy 'ignore'
     tag "$sampleID"
     //publishDir "${params.outdir}/unmappedBAM/", mode: 'copy',pattern: '*.{bam,bai}'
     //publishDir "${params.outdir}/${runfolder_basename}/fastq_symlinks/", mode: 'link', pattern:'*.{fastq,fq}.gz'
     cpus 2
     maxForks 30
-    conda '/lnx01_data3/shared/programmer/miniconda3/envs/fgbio/'
 
     input:
-    tuple val(sampleID), path(r1),path(r2),val(runfolder_basename)// from sorted_input_ch1
-    tuple val(meta), path(data)
-    
+    tuple val(meta), path(data) // Meta [npn,id(npn_superpanel),superpanel,panel,subpanel,runfolder], data: [r1,r2]
+
     output:
-    tuple val(sampleID), path("${sampleID}.unmapped.from.fq.bam"), val(runfolder_basename)// into (ubam_out1, ubam_out2)
-    tuple val(meta), path(data),                                emit: fastq       
-    tuple val(meta), path("${meta.id}.unmapped.from.fq.bam"),   emit: unmappedBam
+    tuple val(meta), path("${sampleID}.unmapped.from.fq.bam"), val(runfolder_basename)// into (ubam_out1, ubam_out2)
+    tuple path(r1),path(r2)
     
     script:
     """
-    fgbio FastqToBam \
-    -i ${data} \
-    -n \
-    --sample ${meta.id} \
-    --library ${meta.npn} \
-    --read-group-id KGA_RG \
+    ${gatk_exec} FastqToSam \
+    -F1 ${data[0]} \
+    -F2 ${data[1]} \
+    -SM ${meta.id} \
+    -PL illumina \
+    -PU KGA_PU \
+    -RG KGA_RG \
     -O ${meta.id}.unmapped.from.fq.bam
     """
 }
-
 
 process markAdapters {
     tag "$sampleID"
@@ -415,4 +413,36 @@ process markDup_cram {
 }
 
 
+
+
+// UMI based analysis
+process fastq_to_ubam_umi {
+    errorStrategy 'ignore'
+    tag "$sampleID"
+    //publishDir "${params.outdir}/unmappedBAM/", mode: 'copy',pattern: '*.{bam,bai}'
+    //publishDir "${params.outdir}/${runfolder_basename}/fastq_symlinks/", mode: 'link', pattern:'*.{fastq,fq}.gz'
+    cpus 2
+    maxForks 30
+    conda '/lnx01_data3/shared/programmer/miniconda3/envs/fgbio/'
+
+    input:
+    tuple val(sampleID), path(r1),path(r2),val(runfolder_basename)// from sorted_input_ch1
+    tuple val(meta), path(data)
+    
+    output:
+    tuple val(sampleID), path("${sampleID}.unmapped.from.fq.bam"), val(runfolder_basename)// into (ubam_out1, ubam_out2)
+    tuple val(meta), path(data),                                emit: fastq       
+    tuple val(meta), path("${meta.id}.unmapped.from.fq.bam"),   emit: unmappedBam
+    
+    script:
+    """
+    fgbio FastqToBam \
+    -i ${data} \
+    -n \
+    --sample ${meta.id} \
+    --library ${meta.npn} \
+    --read-group-id KGA_RG \
+    -O ${meta.id}.unmapped.from.fq.bam
+    """
+}
 
