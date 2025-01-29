@@ -30,6 +30,61 @@ params.keepwork 	            	=null
 runID="${date}.${user}.demultiV1"
 runtype="demultiAndPreprocessV1"
 
+switch (params.genome) {
+    case 'hg19':
+        assembly="hg19"
+        // Genome assembly files:
+        genome_fasta = "/data/shared/genomes/hg19/human_g1k_v37.fasta"
+        genome_fasta_fai = "/data/shared/genomes/hg19/human_g1k_v37.fasta.fai"
+        genome_fasta_dict = "/data/shared/genomes/hg19/human_g1k_v37.dict"
+        genome_version="V1"
+        break;
+
+
+    case 'hg38':
+        assembly="hg38"
+        // Genome assembly files:
+        if (params.hg38v1) {
+        genome_fasta = "/data/shared/genomes/hg38/GRCh38.primary.fa"
+        genome_fasta_fai = "/data/shared/genomes/hg38/GRCh38.primary.fa.fai"
+        genome_fasta_dict = "/data/shared/genomes/hg38/GRCh38.primary.dict"
+        genome_version="V1"
+        cnvkit_germline_reference_PON="/data/shared/genomes/hg38/inhouse_DBs/hg38v1_primary/cnvkit/wgs_germline_PON/jgmr_45samples.reference.cnn"
+        cnvkit_inhouse_cnn_dir="/data/shared/genomes/hg38/inhouse_DBs/hg38v1_primary/cnvkit/wgs_persample_cnn/"
+        inhouse_SV="/data/shared/genomes/hg38/inhouse_DBs/hg38v1_primary/"
+        }
+        
+        if (params.hg38v2){
+        genome_fasta = "/data/shared/genomes/hg38/ucsc.hg38.NGS.analysisSet.fa"
+        genome_fasta_fai = "/data/shared/genomes/hg38/ucsc.hg38.NGS.analysisSet.fa.fai"
+        genome_fasta_dict = "/data/shared/genomes/hg38/ucsc.hg38.NGS.analysisSet.dict"
+        genome_version="V2"
+        }
+        // Current hg38 version (v3): NGC with masks and decoys.
+        if (!params.hg38v2 && !params.hg38v1){
+        genome_fasta = "/data/shared/genomes/hg38/GRCh38_masked_v2_decoy_exclude.fa"
+        genome_fasta_fai = "/data/shared/genomes/hg38/GRCh38_masked_v2_decoy_exclude.fa.fai"
+        genome_fasta_dict = "/data/shared/genomes/hg38/GRCh38_masked_v2_decoy_exclude.dict"
+        genome_version="V3"
+        cnvkit_germline_reference_PON="/data/shared/genomes/hg38/inhouse_DBs/hg38v3_primary/cnvkit/hg38v3_109samples.cnvkit.reference.cnn"
+        cnvkit_inhouse_cnn_dir="/data/shared/genomes/hg38/inhouse_DBs/hg38v3_primary/cnvkit/wgs_persample_cnn/"
+        inhouse_SV="/data/shared//genomes/hg38/inhouse_DBs/hg38v3_primary/"
+        }
+
+
+        AV1_ROI="/data/shared/genomes/${params.genome}/interval.files/panels/av1.hg38.ROI.v2.bed"
+        CV1_ROI="/data/shared/genomes/${params.genome}/interval.files/panels/cv3.hg38.ROI.bed"
+        CV2_ROI="/data/shared/genomes/${params.genome}/interval.files/panels/cv3.hg38.ROI.bed"
+        CV3_ROI="/data/shared/genomes/${params.genome}/interval.files/panels/cv3.hg38.ROI.bed"
+        CV4_ROI="/data/shared/genomes/${params.genome}/interval.files/panels/cv4.hg38.ROI.bed"
+        CV5_ROI="/data/shared/genomes/${params.genome}/interval.files/panels/cv5.hg38.ROI.bed"
+        GV3_ROI="/data/shared/genomes/${params.genome}/interval.files/panels/gv3.hg38.ROI.v2.bed"
+        NV1_ROI="/data/shared/genomes/${params.genome}/interval.files/panels/nv1.hg38.ROI.bed"
+        WES_ROI="/data/shared/genomes/hg38/interval.files/exome.ROIs/211130.hg38.refseq.gencode.fullexons.50bp.SM.bed"
+        MV1_ROI="/data/shared/genomes/${params.genome}/interval.files/panels/muc1.hg38.coordinates.bed"
+ 
+        break;
+}
 
 def helpMessage() {
     log.info"""
