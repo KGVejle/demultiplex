@@ -357,7 +357,7 @@ process markDup_cram {
     script:
     """
     samtools view -h ${bam} \
-    | samblaster | sambamba view -t 8 -S -f bam /dev/stdin | sambamba sort -t 8 --tmpdir=/data/TMP/TMP.${user}/ -o /dev/stdout /dev/stdin \
+    | samblaster | sambamba view -t 8 -S -f bam /dev/stdin | sambamba sort -t 8 --tmpdir=${tmpDIR} -o /dev/stdout /dev/stdin \
     |  samtools view \
     -T ${genome_fasta} \
     -C \
