@@ -148,19 +148,6 @@ fastq_dir="${dataStorage}/fastqStorage/novaRuns/"
 qc_dir="${dataStorage}/fastqStorage/demultiQC/"
 }
 
-
-log.info """\
-===============================================
-Clinical Genetics Vejle: Demultiplexing v2
-Last updated: feb. 2025
-Parameter information 
-===============================================
-Genome       : $params.genome
-Genome FASTA : $genome_fasta
-"""
-
-
-
 /////////////////////////////////////////////////////////////////////////////
 ////////////////////////// DEMULTI PROCESSES: ///////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
@@ -200,22 +187,6 @@ process prepare_RNA_samplesheet {
     sed 's/Settings]/&\\nOverrideCycles,${umiConvertRNA}\\nNoLaneSplitting,true\\nTrimUMI,0\\nCreateFastqIndexForReads,1/' ${samplesheet_basename}.RNA_SAMPLES.csv > ${samplesheet_basename}.RNA_SAMPLES.UMI.csv
     """
 }
-/*
-process prepare_DNA_samplesheet {
-
-    input:
-    tuple val(samplesheet_basename), path(samplesheet)// from original_samplesheet1
-
-    output:
-    path("*.DNA_SAMPLES.csv"), emit: std
-    path("*.UMI.csv"), emit: umi
-    shell:
-    '''
-    cat !{samplesheet} | grep -v "RV1" > !{samplesheet_basename}.DNA_SAMPLES.csv
-    sed 's/Settings]/&\nOverrideCycles,!{umiConvertDNA}\nNoLaneSplitting,true\nTrimUMI,0\nCreateFastqIndexForReads,1/' !{samplesheet_basename}.DNA_SAMPLES.csv > !{samplesheet_basename}.DNA_SAMPLES.UMI.csv
-    '''
-}
-*/
 
 process bclConvert_DNA {
     tag "$runfolder_simplename"
@@ -279,34 +250,6 @@ process bclConvert_RNA {
     """
 }
 
-/*
-process bcl2fastq_RNA {
-    tag "$runfolder_simplename"
-    errorStrategy 'ignore'
-    publishDir "${fastq_dir}/${runfolder_simplename}_UMI/", mode: 'copy'
-
-    input:
-    tuple val(runfolder_simplename), path(runfolder)// from runfolder_ch3
-    path(rnaSS)// from rnaSS1
-    path(runinfo)// from xml_ch2
-
-    output:
-    path("RNA_fastq/*.fastq.gz"), emit: rna_fastq// into (rna_fq_out,rna_fq_out2)
-
-    script:
-    """
-    bcl2fastq \
-    --sample-sheet ${rnaSS} \
-    --runfolder-dir ${runfolder} \
-    --use-bases-mask ${rnaMask} \
-    --no-lane-splitting \
-    -o RNA_fastq
-
-    rm -rf RNA_fastq/Undetermined*
-    """
-}
-*/
-
 ///////////////////////////////// PREPROCESS MODULES //////////////////////// 
 
 
@@ -323,7 +266,6 @@ process fastq_to_ubam {
 
     output:
     tuple val(meta), path("${meta.id}.unmapped.from.fq.bam"),emit:ubam// into (ubam_out1, ubam_out2)
-    tuple path(r1),path(r2)
     
     script:
     """
@@ -422,8 +364,6 @@ process markDup_cram {
     samtools index ${meta.id}.${genome_version}.cram
     """
 }
-
-
 
 
 // UMI based analysis
