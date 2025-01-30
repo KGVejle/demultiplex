@@ -192,8 +192,8 @@ process bclConvert_DNA {
     tag "$runfolder_simplename"
     errorStrategy 'ignore'
 
-    publishDir "${fastq_dir}/", mode: 'copy', pattern:"${runfolder_simplename}_umi/*.fastq.gz"
-    publishDir "${qc_dir}/${runfolder_simplename}_UMI/", mode: 'copy', pattern:"*.DNA.html"
+    publishDir "${fastq_dir}/${runfolder_simplename}_umi", mode: 'copy', pattern:"*.fastq.gz"
+    publishDir "${qc_dir}/${runfolder_simplename}_umi/", mode: 'copy', pattern:"*.DNA.html"
 
     input:
     tuple val(runfolder_simplename), path(runfolder)// from runfolder_ch2
@@ -201,8 +201,8 @@ process bclConvert_DNA {
     path(runinfo) // from xml_ch
 
     output:
-    path("${runfolder_simplename}_umi/*.fastq.gz"), emit: dna_fastq// into (dna_fq_out,dna_fq_out2)
-    path("${runfolder_simplename}.DemultiplexRunStats.Multiqc.DNA.html")
+    path("*.fastq.gz"), emit: dna_fastq// into (dna_fq_out,dna_fq_out2)
+    path("*.Multiqc.DNA.html")
     script:
     """
     bcl-convert \
@@ -214,8 +214,9 @@ process bclConvert_DNA {
     -c ${multiqc_config} \
     -f -q ${runfolder_simplename}_umi/ \
     -n ${runfolder_simplename}.DemultiplexRunStats.Multiqc.DNA.html
-
-    rm -rf ${runfolder_simplename}_umi/Undetermined*
+    
+    mv ${runfolder_simplename}_umi/*.fastq.gz .
+    rm -rf Undetermined*
     """
 }
 
@@ -223,8 +224,8 @@ process bclConvert_RNA {
     tag "$runfolder_simplename"
     errorStrategy 'ignore'
 
-    publishDir "${fastq_dir}/${runfolder_simplename}_UMI/", mode: 'copy', pattern:"*.fastq.gz"
-    publishDir "${qc_dir}/${runfolder_simplename}_UMI/", mode: 'copy', pattern:"*.RNA.html"
+    publishDir "${fastq_dir}/${runfolder_simplename}_umi/", mode: 'copy', pattern:"*.fastq.gz"
+    publishDir "${qc_dir}/${runfolder_simplename}_umi/", mode: 'copy', pattern:"*.RNA.html"
 
     input:
     tuple val(runfolder_simplename), path(runfolder)// from runfolder_ch2
@@ -232,8 +233,8 @@ process bclConvert_RNA {
     path(runinfo) // from xml_ch
 
     output:
-    path("${runfolder_simplename}_umi/*.fastq.gz"), emit: rna_fastq// into (dna_fq_out,dna_fq_out2)
-    path("${runfolder_simplename}.DemultiplexRunStats.Multiqc.RNA.html")
+    path("*.fastq.gz"), emit: rna_fastq// into (dna_fq_out,dna_fq_out2)
+    path("*.Multiqc.RNA.html")
     script:
     """
     bcl-convert \
@@ -246,7 +247,8 @@ process bclConvert_RNA {
     -f -q ${runfolder_simplename}_umi/ \
     -n ${runfolder_simplename}.DemultiplexRunStats.Multiqc.RNA.html
 
-    rm -rf ${runfolder_simplename}_umi/Undetermined*
+    mv ${runfolder_simplename}_umi/*.fastq.gz .
+    rm -rf Undetermined*
     """
 }
 
@@ -344,8 +346,8 @@ process markDup_cram {
     errorStrategy 'ignore'
     maxForks 16
     tag "$meta.id"
-    publishDir "${aln_output_dir}/${meta.runfolder}/", mode: 'copy', pattern: "*.BWA.MD.cr*"
-        conda '/lnx01_data3/shared/programmer/miniconda3/envs/samblasterSambamba/'
+    publishDir "${aln_output_dir}/${meta.runfolder}_umi/", mode: 'copy', pattern: "*.BWA.MD.cr*"
+    conda '/lnx01_data3/shared/programmer/miniconda3/envs/samblasterSambamba/'
     input:
     tuple val(meta), path(bam)
     

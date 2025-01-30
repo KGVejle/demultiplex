@@ -239,8 +239,6 @@ workflow {
 
     DEMULTIPLEX(original_samplesheet, xml_ch)
 
-    DEMULTIPLEX.out.dna_fastq.view()
-
     if (params.DNA && !params.skipAlign){
 
         DEMULTIPLEX.out.dna_fastq.flatten()
@@ -279,8 +277,6 @@ workflow {
         
         readsInputBranched.undetermined.concat(readsInputBranched.MV1).concat(readsInputBranched.EV8).concat(readsInputBranched.WGS)
         | set {readsInputReMerged}
-
-        readsInputReMerged.view()
 
     PREPROCESS(readsInputReMerged)
     fastq_to_ubam_umi(readsInputBranched.AV1PL)
