@@ -345,7 +345,7 @@ process markDup_cram {
     maxForks 16
     tag "$meta.id"
     publishDir "${aln_output_dir}/${meta.runfolder}/", mode: 'copy', pattern: "*.BWA.MD.cr*"
-    
+        conda '/lnx01_data3/shared/programmer/miniconda3/envs/samblasterSambamba/'
     input:
     tuple val(meta), path(bam)
     
