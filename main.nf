@@ -218,7 +218,9 @@ workflow DEMULTIPLEX {
     }
     emit: 
     dna_fastq=bclConvert_DNA.out.dna_fastq
-    rna_fastq=bclConvert_RNA.out.rna_fastq
+    if (params.RNA) {
+        rna_fastq=bclConvert_RNA.out.rna_fastq
+    }
 }
 
 workflow PREPROCESS {
