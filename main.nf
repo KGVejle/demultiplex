@@ -155,20 +155,6 @@ def helpMessage() {
 }
 if (params.help) exit 0, helpMessage()
 
-/* TEST: BELOW ONLY IN MODULES FILE:
-if (params.localStorage) {
-aln_output_dir="${params.outdir}/"
-fastq_dir="${params.outdir}/"
-}
-if (!params.localStorage) {
-aln_output_dir="${tank_storage}/alignedData/${params.genome}/novaRuns/"
-fastq_dir="${tank_storage}/fastq_storage/novaRuns/"
-}
-*/
-
-//libParamLastLine-1="/data/shared/programmer/configfiles/library_param_last_line.v2.1.txt"
-//libParamLastLine-2="/data/shared/programmer/configfiles/library_param_last_line.v2.2.txt"
-
 
 channel
     .fromPath(params.runfolder)
@@ -180,37 +166,16 @@ channel
     .map { it -> it.simpleName}
     .set {runfolder_simplename } 
 
-if (!params.useBasesMask && !params.RNA) {
-  dnaMask="Y*,I8nnnnnnnnn,I8,Y*"
-}
-if (!params.useBasesMask && params.RNA) {
-  dnaMask="Y*,I8nnnnnnnnnnn,I8nn,Y*"
-  rnaMask="Y*,I10nnnnnnnnn,I10,Y*"
-}
-
-if (params.useBasesMask) {
-  dnaMask=params.useBasesMask
-  params.DNA=true
-}
-
-/*
-if (params.RNA) {
-    umiConvertDNA="Y151;I8N2U9;I8N2;Y151"
-    umiConvertRNA="Y151;I10U9;I10;Y151"
-}
-
-if (!params.RNA) {
-    umiConvertDNA="Y151;I8U9;I8;Y151"
-
-}
-*/
-
 
 
 log.info """\
-=======================================
-KGA Vejle demultiplex and Preprocess v1
-=======================================
+===============================================
+Clinical Genetics Vejle: Demultiplexing v2
+Last updated: feb. 2025
+Parameter information 
+===============================================
+Genome       : $params.genome
+Genome FASTA : $genome_fasta
 """
 
 channel
@@ -238,10 +203,6 @@ include {
          } from "./modules/demulti_modules.nf" 
 
 
-//from "${modules_dir}/demulti_modules.nf" 
-
-
-
 workflow DEMULTIPLEX {
     take:
     original_samplesheet
@@ -249,7 +210,6 @@ workflow DEMULTIPLEX {
     main:
     if (params.DNA) {
         prepare_DNA_samplesheet(original_samplesheet)
-        //bcl2fastq_DNA(runfolder_ch, prepare_DNA_samplesheet.out, xml_ch)
         bclConvert_DNA(runfolder_ch, prepare_DNA_samplesheet.out.umi, xml_ch)
     }
     if (params.RNA) {
