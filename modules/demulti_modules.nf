@@ -63,7 +63,7 @@ switch (params.genome) {
         genome_fasta = "/data/shared/genomes/hg38/GRCh38.primary.fa"
         genome_fasta_fai = "/data/shared/genomes/hg38/GRCh38.primary.fa.fai"
         genome_fasta_dict = "/data/shared/genomes/hg38/GRCh38.primary.dict"
-        genome_version="V1"
+        genome_version="hg38v1"
         cnvkit_germline_reference_PON="/data/shared/genomes/hg38/inhouse_DBs/hg38v1_primary/cnvkit/wgs_germline_PON/jgmr_45samples.reference.cnn"
         cnvkit_inhouse_cnn_dir="/data/shared/genomes/hg38/inhouse_DBs/hg38v1_primary/cnvkit/wgs_persample_cnn/"
         inhouse_SV="/data/shared/genomes/hg38/inhouse_DBs/hg38v1_primary/"
@@ -73,14 +73,14 @@ switch (params.genome) {
         genome_fasta = "/data/shared/genomes/hg38/ucsc.hg38.NGS.analysisSet.fa"
         genome_fasta_fai = "/data/shared/genomes/hg38/ucsc.hg38.NGS.analysisSet.fa.fai"
         genome_fasta_dict = "/data/shared/genomes/hg38/ucsc.hg38.NGS.analysisSet.dict"
-        genome_version="V2"
+        genome_version="hg38v2"
         }
         // Current hg38 version (v3): NGC with masks and decoys.
         if (!params.hg38v2 && !params.hg38v1){
         genome_fasta = "/data/shared/genomes/hg38/GRCh38_masked_v2_decoy_exclude.fa"
         genome_fasta_fai = "/data/shared/genomes/hg38/GRCh38_masked_v2_decoy_exclude.fa.fai"
         genome_fasta_dict = "/data/shared/genomes/hg38/GRCh38_masked_v2_decoy_exclude.dict"
-        genome_version="V3"
+        genome_version="hg38v3"
         cnvkit_germline_reference_PON="/data/shared/genomes/hg38/inhouse_DBs/hg38v3_primary/cnvkit/hg38v3_109samples.cnvkit.reference.cnn"
         cnvkit_inhouse_cnn_dir="/data/shared/genomes/hg38/inhouse_DBs/hg38v3_primary/cnvkit/wgs_persample_cnn/"
         inhouse_SV="/data/shared//genomes/hg38/inhouse_DBs/hg38v3_primary/"
@@ -181,6 +181,25 @@ process prepare_DNA_samplesheet {
     sed 's/Settings]/&\\nOverrideCycles,${umiConvertDNA}\\nNoLaneSplitting,true\\nTrimUMI,0\\nCreateFastqIndexForReads,1/' ${samplesheet_basename}.DNA_SAMPLES.csv > ${samplesheet_basename}.DNA_SAMPLES.UMI.csv
     """
 }
+
+process prepare_RNA_samplesheet {
+
+    input:
+    tuple val(samplesheet_basename), path(samplesheet)// from original_samplesheet2
+    output:
+    path("*.RNA_SAMPLES.csv"), emit: std
+    path("*.UMI.csv"),emit: umi// into rnaSS1    
+
+    script:
+    """
+
+    cat ${samplesheet} | grep "RV1" > ${samplesheet_basename}.RNAsamples.intermediate.txt
+    sed -n '1,/Sample_ID/p' ${samplesheet} > ${samplesheet_basename}.HEADER.txt
+    cat ${samplesheet_basename}.HEADER.txt ${samplesheet_basename}.RNAsamples.intermediate.txt > ${samplesheet_basename}.RNA_SAMPLES.csv 
+
+    sed 's/Settings]/&\\nOverrideCycles,${umiConvertRNA}\\nNoLaneSplitting,true\\nTrimUMI,0\\nCreateFastqIndexForReads,1/' ${samplesheet_basename}.RNA_SAMPLES.csv > ${samplesheet_basename}.RNA_SAMPLES.UMI.csv
+    """
+}
 /*
 process prepare_DNA_samplesheet {
 
@@ -228,27 +247,6 @@ process bclConvert_DNA {
     rm -rf ${runfolder_simplename}_umi/Undetermined*
     """
 }
-
-
-process prepare_RNA_samplesheet {
-
-    input:
-    tuple val(samplesheet_basename), path(samplesheet)// from original_samplesheet2
-    output:
-    path("*.RNA_SAMPLES.csv"), emit: std
-    path("*.UMI.csv"),emit: umi// into rnaSS1    
-
-    script:
-    """
-
-    cat ${samplesheet} | grep "RV1" > ${samplesheet_basename}.RNAsamples.intermediate.txt
-    sed -n '1,/Sample_ID/p' ${samplesheet} > ${samplesheet_basename}.HEADER.txt
-    cat ${samplesheet_basename}.HEADER.txt ${samplesheet_basename}.RNAsamples.intermediate.txt > ${samplesheet_basename}.RNA_SAMPLES.csv 
-
-    sed 's/Settings]/&\\nOverrideCycles,${umiConvertRNA}\\nNoLaneSplitting,true\\nTrimUMI,0\\nCreateFastqIndexForReads,1/' ${samplesheet_basename}.RNA_SAMPLES.csv > ${samplesheet_basename}.RNA_SAMPLES.UMI.csv
-    """
-}
-
 
 process bclConvert_RNA {
     tag "$runfolder_simplename"
@@ -314,7 +312,7 @@ process bcl2fastq_RNA {
 
 process fastq_to_ubam {
     errorStrategy 'ignore'
-    tag "$sampleID"
+    tag "$meta.id"
     //publishDir "${params.outdir}/unmappedBAM/", mode: 'copy',pattern: '*.{bam,bai}'
     //publishDir "${params.outdir}/${runfolder_basename}/fastq_symlinks/", mode: 'link', pattern:'*.{fastq,fq}.gz'
     cpus 2
@@ -324,7 +322,7 @@ process fastq_to_ubam {
     tuple val(meta), path(data) // Meta [npn,id(npn_superpanel),superpanel,panel,subpanel,runfolder], data: [r1,r2]
 
     output:
-    tuple val(meta), path("${sampleID}.unmapped.from.fq.bam"), val(runfolder_basename)// into (ubam_out1, ubam_out2)
+    tuple val(meta), path("${meta.id}.unmapped.from.fq.bam"),emit:ubam// into (ubam_out1, ubam_out2)
     tuple path(r1),path(r2)
     
     script:
@@ -341,43 +339,43 @@ process fastq_to_ubam {
 }
 
 process markAdapters {
-    tag "$sampleID"
+    tag "$meta.id"
     errorStrategy 'ignore'
 
     input:
-    tuple val(sampleID), path(uBAM),  val(runfolder_basename)//  from ubam_out1
+    tuple val(meta), path(uBAM)
 
     output:
-    tuple val(sampleID), path("${sampleID}.ubamXT.bam"), val(runfolder_basename), path("${sampleID}.markAdapterMetrics.txt")// into (ubamXT_out,ubamXT_out2)
+    tuple val(meta), path("${meta.id}.ubamXT.bam"), path("${meta.id}.markAdapterMetrics.txt")// into (ubamXT_out,ubamXT_out2)
 
     script:
     """
     ${gatk_exec} MarkIlluminaAdapters \
     -I ${uBAM} \
-    -O ${sampleID}.ubamXT.bam \
+    -O ${meta.id}.ubamXT.bam \
     --TMP_DIR ${tmpDIR} \
-    -M ${sampleID}.markAdapterMetrics.txt
+    -M ${meta.id}.markAdapterMetrics.txt
     """
 }
 
 
 process align {
-    tag "$sampleID"
+    tag "$meta.id"
 
     maxForks 10
     errorStrategy 'ignore'
     cpus 60
 
     input:
-    tuple val(sampleID), path(uBAM),  val(runfolder_basename), path(metrics)//  from ubamXT_out
+    tuple val(meta), path(uBAMXT), path(metrics)//  from ubamXT_out
 
     output:
-    tuple val(sampleID), path("${sampleID}.${params.genome}.${genome_version}.QNsort.BWA.clean.bam"), val(runfolder_basename)// into (md_input1, md_input2, md_input3)
+    tuple val(meta), path("${meta.id}.${genome_version}.QNsort.BWA.clean.bam")
     
     script:
     """
     ${gatk_exec} SamToFastq \
-    -I ${uBAM} \
+    -I ${uBAMXT} \
     -INTER \
     -CLIP_ATTR XT \
     -CLIP_ACT 2 \
@@ -390,12 +388,12 @@ process align {
     /dev/stdin \
     | ${gatk_exec} MergeBamAlignment \
     -R ${genome_fasta} \
-    -UNMAPPED ${uBAM} \
+    -UNMAPPED ${uBAMXT} \
     -ALIGNED /dev/stdin \
     -MAX_GAPS -1 \
     -ORIENTATIONS FR \
     -SO queryname \
-    -O ${sampleID}.${params.genome}.${genome_version}.QNsort.BWA.clean.bam
+    -O ${meta.id}.${genome_version}.QNsort.BWA.clean.bam
     """
 }
 
@@ -403,14 +401,14 @@ process align {
 process markDup_cram {
     errorStrategy 'ignore'
     maxForks 16
-    tag "$sampleID"
-    publishDir "${aln_output_dir}/${runfolder_basename}/", mode: 'copy', pattern: "*.BWA.MD.cr*"
+    tag "$meta.id"
+    publishDir "${aln_output_dir}/${meta.runfolder}/", mode: 'copy', pattern: "*.BWA.MD.cr*"
     
     input:
-    tuple val(sampleID), path(bam), val(runfolder_basename)// from md_input1
+    tuple val(meta), path(bam)
     
     output:
-    tuple val(sampleID), path("${sampleID}.${params.genome}.${genome_version}.BWA.MD.cram"), path("${sampleID}.${params.genome}.${genome_version}.BWA.MD*crai")// into (cramout_1,cramout_2)
+    tuple val(meta), path("${meta.id}.${genome_version}.cram"), path("${meta.id}.${genome_version}*crai")
     
     script:
     """
@@ -419,9 +417,9 @@ process markDup_cram {
     |  samtools view \
     -T ${genome_fasta} \
     -C \
-    -o ${sampleID}.${params.genome}.${genome_version}.BWA.MD.cram -
+    -o ${meta.id}.${genome_version}.cram -
 
-    samtools index ${sampleID}.${params.genome}.${genome_version}.BWA.MD.cram
+    samtools index ${meta.id}.${genome_version}.cram
     """
 }
 
@@ -439,13 +437,12 @@ process fastq_to_ubam_umi {
     conda '/lnx01_data3/shared/programmer/miniconda3/envs/fgbio/'
 
     input:
-    tuple val(sampleID), path(r1),path(r2),val(runfolder_basename)// from sorted_input_ch1
     tuple val(meta), path(data)
     
     output:
-    tuple val(sampleID), path("${sampleID}.unmapped.from.fq.bam"), val(runfolder_basename)// into (ubam_out1, ubam_out2)
-    tuple val(meta), path(data),                                emit: fastq       
-    tuple val(meta), path("${meta.id}.unmapped.from.fq.bam"),   emit: unmappedBam
+    tuple val(meta), path("${meta.id}.unmapped.umi.from.fq.bam"),   emit: unmappedBam
+    tuple val(meta), path(data),                                    emit: fastq       
+
     
     script:
     """
@@ -455,7 +452,7 @@ process fastq_to_ubam_umi {
     --sample ${meta.id} \
     --library ${meta.npn} \
     --read-group-id KGA_RG \
-    -O ${meta.id}.unmapped.from.fq.bam
+    -O ${meta.id}.unmapped.umi.from.fq.bam
     """
 }
 

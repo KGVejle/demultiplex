@@ -48,7 +48,7 @@ switch (params.genome) {
         genome_fasta = "/data/shared/genomes/hg38/GRCh38.primary.fa"
         genome_fasta_fai = "/data/shared/genomes/hg38/GRCh38.primary.fa.fai"
         genome_fasta_dict = "/data/shared/genomes/hg38/GRCh38.primary.dict"
-        genome_version="V1"
+        genome_version="hg38v1"
         cnvkit_germline_reference_PON="/data/shared/genomes/hg38/inhouse_DBs/hg38v1_primary/cnvkit/wgs_germline_PON/jgmr_45samples.reference.cnn"
         cnvkit_inhouse_cnn_dir="/data/shared/genomes/hg38/inhouse_DBs/hg38v1_primary/cnvkit/wgs_persample_cnn/"
         inhouse_SV="/data/shared/genomes/hg38/inhouse_DBs/hg38v1_primary/"
@@ -58,14 +58,14 @@ switch (params.genome) {
         genome_fasta = "/data/shared/genomes/hg38/ucsc.hg38.NGS.analysisSet.fa"
         genome_fasta_fai = "/data/shared/genomes/hg38/ucsc.hg38.NGS.analysisSet.fa.fai"
         genome_fasta_dict = "/data/shared/genomes/hg38/ucsc.hg38.NGS.analysisSet.dict"
-        genome_version="V2"
+        genome_version="hg38v2"
         }
         // Current hg38 version (v3): NGC with masks and decoys.
         if (!params.hg38v2 && !params.hg38v1){
         genome_fasta = "/data/shared/genomes/hg38/GRCh38_masked_v2_decoy_exclude.fa"
         genome_fasta_fai = "/data/shared/genomes/hg38/GRCh38_masked_v2_decoy_exclude.fa.fai"
         genome_fasta_dict = "/data/shared/genomes/hg38/GRCh38_masked_v2_decoy_exclude.dict"
-        genome_version="V3"
+        genome_version="hg38v3"
         cnvkit_germline_reference_PON="/data/shared/genomes/hg38/inhouse_DBs/hg38v3_primary/cnvkit/hg38v3_109samples.cnvkit.reference.cnn"
         cnvkit_inhouse_cnn_dir="/data/shared/genomes/hg38/inhouse_DBs/hg38v3_primary/cnvkit/wgs_persample_cnn/"
         inhouse_SV="/data/shared//genomes/hg38/inhouse_DBs/hg38v3_primary/"
@@ -229,6 +229,7 @@ include {
          prepare_DNA_samplesheet;
          bclConvert_DNA;
          fastq_to_ubam_umi;
+         fastq_to_ubam;
          prepare_RNA_samplesheet; 
          bclConvert_RNA;
          markAdapters;
@@ -263,11 +264,11 @@ workflow DEMULTIPLEX {
 workflow PREPROCESS {
 
     take:
-    std_fq_input_ch
+    readsInputReMerged
     
     main:
-    fastq_to_ubam_umi(std_fq_input_ch)
-    markAdapters(fastq_to_ubam_umi.out[0])
+    fastq_to_ubam(readsInputReMerged)
+    markAdapters(fastq_to_ubam.out.ubam)
     align(markAdapters.out)
     markDup_cram(align.out)
     emit:
@@ -321,9 +322,11 @@ workflow {
 
         readsInputReMerged.view()
 
-    //PREPROCESS(readsInputReMerged)
+    PREPROCESS(readsInputReMerged)
+    fastq_to_ubam_umi(readsInputBranched.AV1PL)
     }
 }
+
 /*
 workflow {
 
