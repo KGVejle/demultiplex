@@ -193,7 +193,7 @@ process bclConvert_DNA {
     errorStrategy 'ignore'
 
     publishDir "${fastq_dir}/${runfolder_simplename}_umi", mode: 'copy', pattern:"*.fastq.gz"
-    publishDir "${qc_dir}/${runfolder_simplename}_umi/", mode: 'copy', pattern:"*.DNA.html"
+    publishDir "${qc_dir}/", mode: 'copy', pattern:"*.DNA.html"
 
     input:
     tuple val(runfolder_simplename), path(runfolder)// from runfolder_ch2
@@ -225,7 +225,7 @@ process bclConvert_RNA {
     errorStrategy 'ignore'
 
     publishDir "${fastq_dir}/${runfolder_simplename}_umi/", mode: 'copy', pattern:"*.fastq.gz"
-    publishDir "${qc_dir}/${runfolder_simplename}_umi/", mode: 'copy', pattern:"*.RNA.html"
+    publishDir "${qc_dir}/", mode: 'copy', pattern:"*.RNA.html"
 
     input:
     tuple val(runfolder_simplename), path(runfolder)// from runfolder_ch2
