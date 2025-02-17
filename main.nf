@@ -272,7 +272,7 @@ workflow {
     }
 }
 
-
+/*
 workflow.onComplete {
 
     // Extract the first six digits from the samplesheet name
@@ -308,3 +308,4 @@ workflow.onComplete {
         "rm -rf ${workflow.workDir}".execute()
     }
 }
+*/
