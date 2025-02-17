@@ -8,7 +8,7 @@ date=new Date().format( 'yyMMdd' )
 params.rundir                   ="${launchDir.baseName}"            // get basename of dir where script is started
 params.outdir                   ='Demultiplexing_results'           // Default output folder.
 params.genome                   ="hg38"                             // Default assembly
-params.server                   ='lnx01'                            // Default server
+params.server                   =null                            // Default server
 
 // Unset parameters: 
 params.help                     =false
@@ -30,6 +30,61 @@ params.keepwork 	            	=null
 runID="${date}.${user}.demultiV1"
 runtype="demultiAndPreprocessV1"
 
+switch (params.genome) {
+    case 'hg19':
+        assembly="hg19"
+        // Genome assembly files:
+        genome_fasta = "/data/shared/genomes/hg19/human_g1k_v37.fasta"
+        genome_fasta_fai = "/data/shared/genomes/hg19/human_g1k_v37.fasta.fai"
+        genome_fasta_dict = "/data/shared/genomes/hg19/human_g1k_v37.dict"
+        genome_version="V1"
+        break;
+
+
+    case 'hg38':
+        assembly="hg38"
+        // Genome assembly files:
+        if (params.hg38v1) {
+        genome_fasta = "/data/shared/genomes/hg38/GRCh38.primary.fa"
+        genome_fasta_fai = "/data/shared/genomes/hg38/GRCh38.primary.fa.fai"
+        genome_fasta_dict = "/data/shared/genomes/hg38/GRCh38.primary.dict"
+        genome_version="hg38v1"
+        cnvkit_germline_reference_PON="/data/shared/genomes/hg38/inhouse_DBs/hg38v1_primary/cnvkit/wgs_germline_PON/jgmr_45samples.reference.cnn"
+        cnvkit_inhouse_cnn_dir="/data/shared/genomes/hg38/inhouse_DBs/hg38v1_primary/cnvkit/wgs_persample_cnn/"
+        inhouse_SV="/data/shared/genomes/hg38/inhouse_DBs/hg38v1_primary/"
+        }
+        
+        if (params.hg38v2){
+        genome_fasta = "/data/shared/genomes/hg38/ucsc.hg38.NGS.analysisSet.fa"
+        genome_fasta_fai = "/data/shared/genomes/hg38/ucsc.hg38.NGS.analysisSet.fa.fai"
+        genome_fasta_dict = "/data/shared/genomes/hg38/ucsc.hg38.NGS.analysisSet.dict"
+        genome_version="hg38v2"
+        }
+        // Current hg38 version (v3): NGC with masks and decoys.
+        if (!params.hg38v2 && !params.hg38v1){
+        genome_fasta = "/data/shared/genomes/hg38/GRCh38_masked_v2_decoy_exclude.fa"
+        genome_fasta_fai = "/data/shared/genomes/hg38/GRCh38_masked_v2_decoy_exclude.fa.fai"
+        genome_fasta_dict = "/data/shared/genomes/hg38/GRCh38_masked_v2_decoy_exclude.dict"
+        genome_version="hg38v3"
+        cnvkit_germline_reference_PON="/data/shared/genomes/hg38/inhouse_DBs/hg38v3_primary/cnvkit/hg38v3_109samples.cnvkit.reference.cnn"
+        cnvkit_inhouse_cnn_dir="/data/shared/genomes/hg38/inhouse_DBs/hg38v3_primary/cnvkit/wgs_persample_cnn/"
+        inhouse_SV="/data/shared//genomes/hg38/inhouse_DBs/hg38v3_primary/"
+        }
+
+
+        AV1_ROI="/data/shared/genomes/${params.genome}/interval.files/panels/av1.hg38.ROI.v2.bed"
+        CV1_ROI="/data/shared/genomes/${params.genome}/interval.files/panels/cv3.hg38.ROI.bed"
+        CV2_ROI="/data/shared/genomes/${params.genome}/interval.files/panels/cv3.hg38.ROI.bed"
+        CV3_ROI="/data/shared/genomes/${params.genome}/interval.files/panels/cv3.hg38.ROI.bed"
+        CV4_ROI="/data/shared/genomes/${params.genome}/interval.files/panels/cv4.hg38.ROI.bed"
+        CV5_ROI="/data/shared/genomes/${params.genome}/interval.files/panels/cv5.hg38.ROI.bed"
+        GV3_ROI="/data/shared/genomes/${params.genome}/interval.files/panels/gv3.hg38.ROI.v2.bed"
+        NV1_ROI="/data/shared/genomes/${params.genome}/interval.files/panels/nv1.hg38.ROI.bed"
+        WES_ROI="/data/shared/genomes/hg38/interval.files/exome.ROIs/211130.hg38.refseq.gencode.fullexons.50bp.SM.bed"
+        MV1_ROI="/data/shared/genomes/${params.genome}/interval.files/panels/muc1.hg38.coordinates.bed"
+ 
+        break;
+}
 
 def helpMessage() {
     log.info"""
@@ -37,7 +92,8 @@ def helpMessage() {
     This scripts requires at least 3 options: Path to runfolder, path to a samplesheet, and at least --DNA or --RNA parameter.
     There is no need to manually edit the samplesheet: The script will automatically separate DNA from RNA samples, and demultiplex them in parallel, if both --DNA and --RNA are set.
     
-    PLEASE NOTE: The script will automatically perform preprocesssing and alignment of DNA samples. Fastq and aligned CRAM files will automatically be transferred to the long term storage location. This means no Fastq or aligned CRAM files will be found where the script is executed - only in the long term storage (dataArchive) location.
+    PLEASE NOTE: The script will automatically perform preprocesssing and alignment of DNA samples (except ctDNA samples, as they rely on UMI data preprocessing and alignment). 
+    Fastq and aligned CRAM files will automatically be transferred to the long term storage location. This means no Fastq or aligned CRAM files will be found where the script is executed - only in the long term storage (dataArchive) location.
     
     The resulting CRAM files will be available from the data archive location from each server as read-only locations:
     ../dataArchive/lnx02/alignedData/{genomeversion}/novaRuns/runfolder
@@ -71,21 +127,11 @@ def helpMessage() {
 
       --RNA                 Demultiplex RNA samples
 
-      --useBasesMask        manually set "--use-bases-mask" parameter for demultiplexing.
-                            Default for demultiplexing DNA-only runs (I1=8 bp and I2=17 bp): 
-                            DNA samples: Y*,I8nnnnnnnnn,I8,Y
-                            Default for demultiplexing both DNA- and RNA-samples (I1=10 bp and I2=19 bp): 
-                            DNA samples:"Y*,I8nnnnnnnnnnn,I8nn,Y*"
-                            RNA samples: "Y*,I10nnnnnnnnn,I10,Y*"
-
       --skipAlign           Do not perform preprocessing and alignment (i.e. only demultiplexing)
                                 Default: Not set (i.e. run preprocessing and alignment)
 
-      --alignRNA            Align RNA samples (STAR 2-pass). Alignment will be run twice using the reccomended parameters for e.g. Arriba or STAR-fusion.
-                                Default: Do not align RNA samples.
-
-      --server              Choose server to run script from (lnx01 or lnx02)
-                                Default: lnx01
+      --server              Choose server to run script from (lnx01, lnx02, rgi01 or rgi02)
+                                Default: unset - use only if running from lnx01
 
       --genome               hg19 or hg38
                                 Default: hg38v3
@@ -100,20 +146,6 @@ def helpMessage() {
 }
 if (params.help) exit 0, helpMessage()
 
-/* TEST: BELOW ONLY IN MODULES FILE:
-if (params.localStorage) {
-aln_output_dir="${params.outdir}/"
-fastq_dir="${params.outdir}/"
-}
-if (!params.localStorage) {
-aln_output_dir="${tank_storage}/alignedData/${params.genome}/novaRuns/"
-fastq_dir="${tank_storage}/fastq_storage/novaRuns/"
-}
-*/
-
-//libParamLastLine-1="/data/shared/programmer/configfiles/library_param_last_line.v2.1.txt"
-//libParamLastLine-2="/data/shared/programmer/configfiles/library_param_last_line.v2.2.txt"
-
 
 channel
     .fromPath(params.runfolder)
@@ -125,23 +157,15 @@ channel
     .map { it -> it.simpleName}
     .set {runfolder_simplename } 
 
-if (!params.useBasesMask && !params.RNA) {
-  dnaMask="Y*,I8nnnnnnnnn,I8,Y*"
-}
-if (!params.useBasesMask && params.RNA) {
-  dnaMask="Y*,I8nnnnnnnnnnn,I8nn,Y*"
-  rnaMask="Y*,I10nnnnnnnnn,I10,Y*"
-}
 
-if (params.useBasesMask) {
-  dnaMask=params.useBasesMask
-  params.DNA=true
-}
 
 log.info """\
-=======================================
-KGA Vejle demultiplex and Preprocess v1
-=======================================
+===============================================
+Clinical Genetics Vejle: Demultiplexing v2
+Last updated: feb. 2025
+===============================================
+Genome       : $params.genome
+Genome FASTA : $genome_fasta
 """
 
 channel
@@ -158,18 +182,15 @@ channel.fromPath(params.samplesheet)
 include {      
          // Preprocess tools:
          prepare_DNA_samplesheet;
-         bcl2fastq_DNA;
-         prepare_RNA_samplesheet; 
-         bcl2fastq_RNA;
+         bclConvert_DNA;
+         fastq_to_ubam_umi;
          fastq_to_ubam;
+         prepare_RNA_samplesheet; 
+         bclConvert_RNA;
          markAdapters;
          align;
          markDup_cram;
          } from "./modules/demulti_modules.nf" 
-
-
-//from "${modules_dir}/demulti_modules.nf" 
-
 
 
 workflow DEMULTIPLEX {
@@ -179,24 +200,24 @@ workflow DEMULTIPLEX {
     main:
     if (params.DNA) {
         prepare_DNA_samplesheet(original_samplesheet)
-        bcl2fastq_DNA(runfolder_ch, prepare_DNA_samplesheet.out, xml_ch)
+        bclConvert_DNA(runfolder_ch, prepare_DNA_samplesheet.out.umi, xml_ch)
     }
     if (params.RNA) {
         prepare_RNA_samplesheet(original_samplesheet)
-        bcl2fastq_RNA(runfolder_ch, prepare_RNA_samplesheet.out, xml_ch)
+        bclConvert_RNA(runfolder_ch, prepare_RNA_samplesheet.out.umi, xml_ch)
     }
     emit: 
-    dna_fastq=bcl2fastq_DNA.out.dna_fastq
+    dna_fastq=bclConvert_DNA.out.dna_fastq
 }
 
 workflow PREPROCESS {
 
     take:
-    std_fq_input_ch
+    readsInputReMerged
     
     main:
-    fastq_to_ubam(std_fq_input_ch)
-    markAdapters(fastq_to_ubam.out[0])
+    fastq_to_ubam(readsInputReMerged)
+    markAdapters(fastq_to_ubam.out.ubam)
     align(markAdapters.out)
     markDup_cram(align.out)
     emit:
@@ -206,35 +227,48 @@ workflow PREPROCESS {
 workflow {
 
     DEMULTIPLEX(original_samplesheet, xml_ch)
-    
+
     if (params.DNA && !params.skipAlign){
 
         DEMULTIPLEX.out.dna_fastq.flatten()
-        .filter {it =~/_R1_/}
-        .map { tuple(it.baseName.tokenize('-').get(0)+"_"+it.baseName.tokenize('-').get(1),it) }
-        .set { sampleid_R1 }
+        | filter {it =~/_R1_/}
+        | map { tuple (it.baseName.tokenize("-").get(0), it) }
+    // |view
+        | set {r1}    
 
         DEMULTIPLEX.out.dna_fastq.flatten()
-        .filter {it =~/_R2_/}
-        .map { tuple(it.baseName.tokenize('-').get(0)+"_"+it.baseName.tokenize('-').get(1),it) }
-        .set { sampleid_R2 }
+        | filter {it =~/_R2_/}
+        | map { tuple (it.baseName.tokenize("-").get(0), it) }
+        //|view
+        | set {r2}
+       
+        r1.join(r2).combine(runfolder_simplename)
+        | map {npn, r1, r2,runfolder ->
+            superpanel=r1.baseName.tokenize("-").get(1)
+            (panel,subpanel)=superpanel.tokenize("_")
+            meta = [npn:npn,id:npn+"_"+superpanel, superpanel:superpanel, panel:panel, subpanel:subpanel,runfolder:runfolder]
+            tuple(meta, [r1, r2])
+        }  
+        | branch {meta, reads ->
+                WES: (meta.panel=~/EV8/||meta.panel=~/EV7/)
+                    return [meta + [datatype:"targeted",roi:"$WES_ROI"] ,reads]
+                CTDNA: (meta.superpanel==/_CTDNA/)
+                    return [meta + [datatype:"targeted",roi:"$AV1_ROI"] ,reads]
+                MV1: (meta.superpanel==/MV1/)
+                    return [meta + [datatype:"targeted",roi:"$MV1_ROI"] ,reads]
+                WGS: (meta.superpanel=~/WG4/||meta.superpanel=~/WGS/)
+                    return [meta + [datatype:"WGS",roi:"$WES_ROI"] ,reads]
+                undetermined: true
+                    return [meta + [datatype:"targeted",roi:"$AV1_ROI"] ,reads]      
+        }
 
-        sampleid_R1.join(sampleid_R2)
-        .combine(runfolder_simplename)
-        .set { read_pairs_ch }
+        | set {readsInputBranched}
+        
+        readsInputBranched.undetermined.concat(readsInputBranched.MV1).concat(readsInputBranched.WES).concat(readsInputBranched.WGS)
+        | set {readsInputReMerged}  // Re-merge the data for the undetermined (i.e. AV1), MV1, WES, and WGS samples - i.e. only leave out plasma (CTDNA) samples.
 
-        read_pairs_ch
-        .filter {it =~/AV1/||it =~/MV1/}
-        .set { av1_channel }
-
-        read_pairs_ch
-        .filter {it =~/WG4/ ||it =~/WG3/ ||it =~/EV8/||it =~/LIB/}
-        .set { rest_channel }
-
-        av1_channel.concat(rest_channel)
-        .set { std_fq_input_ch }
-
-    PREPROCESS(std_fq_input_ch)
+    PREPROCESS(readsInputReMerged)  // standard preprocessing for all but CTDNA
+    //fastq_to_ubam_umi(readsInputBranched.CTDNA) // preprocessing for CTDNA
     }
 }
 
@@ -274,4 +308,3 @@ workflow.onComplete {
         "rm -rf ${workflow.workDir}".execute()
     }
 }
-
