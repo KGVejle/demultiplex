@@ -43,8 +43,22 @@ switch (params.server) {
         refFilesDir="/fast/shared/genomes";
     break;
 }
+/*
+switch ($user) {
+    case 'mmaj':
+        permissions="full";
+    break;
+    
+    case 'raspau':
+        permissions="full";
+    break;
+    
+    default:
+        permissions="reduced";
+    break;
 
-
+}
+*/
 switch (params.genome) {
     case 'hg19':
         assembly="hg19"
@@ -134,7 +148,7 @@ if (!params.DNA) {
 }
 
 
-if (params.localStorage) {
+if (params.localStorage ) {
 aln_output_dir="${params.outdir}/"
 fastq_dir="${params.outdir}/"
 qc_dir="${params.outdir}/QC/"
@@ -231,8 +245,10 @@ process bclConvert_RNA {
     path(runinfo) // from xml_ch
 
     output:
+
     path("*.fastq.gz"), emit: rna_fastq// into (dna_fq_out,dna_fq_out2)
     path("*.Multiqc.RNA.html")
+
     script:
     """
     bcl-convert \
