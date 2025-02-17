@@ -134,8 +134,6 @@ if (!params.DNA) {
 }
 
 
-
-
 if (params.localStorage) {
 aln_output_dir="${params.outdir}/"
 fastq_dir="${params.outdir}/"
@@ -252,7 +250,8 @@ process bclConvert_RNA {
     """
 }
 
-///////////////////////////////// PREPROCESS MODULES //////////////////////// 
+
+///////////////////////////////// PREPROCESS MODULES - STANDARD //////////////////////// 
 
 
 process fastq_to_ubam {
@@ -368,7 +367,8 @@ process markDup_cram {
 }
 
 
-// UMI based analysis
+///////////////////////////////// PREPROCESS MODULES - UMI samples //////////////////////// 
+
 process fastq_to_ubam_umi {
     errorStrategy 'ignore'
     tag "$sampleID"

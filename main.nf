@@ -92,7 +92,8 @@ def helpMessage() {
     This scripts requires at least 3 options: Path to runfolder, path to a samplesheet, and at least --DNA or --RNA parameter.
     There is no need to manually edit the samplesheet: The script will automatically separate DNA from RNA samples, and demultiplex them in parallel, if both --DNA and --RNA are set.
     
-    PLEASE NOTE: The script will automatically perform preprocesssing and alignment of DNA samples. Fastq and aligned CRAM files will automatically be transferred to the long term storage location. This means no Fastq or aligned CRAM files will be found where the script is executed - only in the long term storage (dataArchive) location.
+    PLEASE NOTE: The script will automatically perform preprocesssing and alignment of DNA samples (except ctDNA samples, as they rely on UMI data preprocessing and alignment). 
+    Fastq and aligned CRAM files will automatically be transferred to the long term storage location. This means no Fastq or aligned CRAM files will be found where the script is executed - only in the long term storage (dataArchive) location.
     
     The resulting CRAM files will be available from the data archive location from each server as read-only locations:
     ../dataArchive/lnx02/alignedData/{genomeversion}/novaRuns/runfolder
@@ -126,21 +127,11 @@ def helpMessage() {
 
       --RNA                 Demultiplex RNA samples
 
-      --useBasesMask        manually set "--use-bases-mask" parameter for demultiplexing.
-                            Default for demultiplexing DNA-only runs (I1=8 bp and I2=17 bp): 
-                            DNA samples: Y*,I8nnnnnnnnn,I8,Y
-                            Default for demultiplexing both DNA- and RNA-samples (I1=10 bp and I2=19 bp): 
-                            DNA samples:"Y*,I8nnnnnnnnnnn,I8nn,Y*"
-                            RNA samples: "Y*,I10nnnnnnnnn,I10,Y*"
-
       --skipAlign           Do not perform preprocessing and alignment (i.e. only demultiplexing)
                                 Default: Not set (i.e. run preprocessing and alignment)
 
-      --alignRNA            Align RNA samples (STAR 2-pass). Alignment will be run twice using the reccomended parameters for e.g. Arriba or STAR-fusion.
-                                Default: Do not align RNA samples.
-
-      --server              Choose server to run script from (lnx01 or lnx02)
-                                Default: lnx01
+      --server              Choose server to run script from (lnx01, lnx02, rgi01 or rgi02)
+                                Default: unset - use only if running from lnx01
 
       --genome               hg19 or hg38
                                 Default: hg38v3
@@ -172,7 +163,6 @@ log.info """\
 ===============================================
 Clinical Genetics Vejle: Demultiplexing v2
 Last updated: feb. 2025
-Parameter information 
 ===============================================
 Genome       : $params.genome
 Genome FASTA : $genome_fasta
@@ -260,9 +250,9 @@ workflow {
             tuple(meta, [r1, r2])
         }  
         | branch {meta, reads ->
-                EV8: (meta.panel=~/EV8/||meta.panel=~/EV7/)
+                WES: (meta.panel=~/EV8/||meta.panel=~/EV7/)
                     return [meta + [datatype:"targeted",roi:"$WES_ROI"] ,reads]
-                AV1PL: (meta.superpanel==/AV1_CV6PL/)
+                CTDNA: (meta.superpanel==/_CTDNA/)
                     return [meta + [datatype:"targeted",roi:"$AV1_ROI"] ,reads]
                 MV1: (meta.superpanel==/MV1/)
                     return [meta + [datatype:"targeted",roi:"$MV1_ROI"] ,reads]
@@ -274,57 +264,15 @@ workflow {
 
         | set {readsInputBranched}
         
-        readsInputBranched.undetermined.concat(readsInputBranched.MV1).concat(readsInputBranched.EV8).concat(readsInputBranched.WGS)
-        | set {readsInputReMerged}
+        readsInputBranched.undetermined.concat(readsInputBranched.MV1).concat(readsInputBranched.WES).concat(readsInputBranched.WGS)
+        | set {readsInputReMerged}  // Re-merge the data for the undetermined, MV1, WES, and WGS samples - i.e. only leave out plasma (CTDNA) samples.
 
-    PREPROCESS(readsInputReMerged)
-    fastq_to_ubam_umi(readsInputBranched.AV1PL)
+    PREPROCESS(readsInputReMerged)  // standard preprocessing for all but CTDNA
+    //fastq_to_ubam_umi(readsInputBranched.CTDNA) // preprocessing for CTDNA
     }
 }
 
-/*
-workflow {
 
-    DEMULTIPLEX(original_samplesheet, xml_ch)
-
-    DEMULTIPLEX.out.dna_fastq.view()
-
-    if (params.DNA && !params.skipAlign){
-
-        DEMULTIPLEX.out.dna_fastq.flatten()
-        .filter {it =~/_R1_/}
-        .map { tuple(it.baseName.tokenize('-').get(0)+"_"+it.baseName.tokenize('-').get(1),it) }
-        .set { sampleid_R1 }
-
-        DEMULTIPLEX.out.dna_fastq.flatten()
-        .filter {it =~/_R2_/}
-        .map { tuple(it.baseName.tokenize('-').get(0)+"_"+it.baseName.tokenize('-').get(1),it) }
-        .set { sampleid_R2 }
-
-        sampleid_R1.join(sampleid_R2)
-        .combine(runfolder_simplename)
-        .set { read_pairs_ch }
-
-
-        read_pairs_ch
-        .filter {it =~/AV1/||it =~/MV1/}
-        .set { av1_channel }
-
-        read_pairs_ch
-        .filter {it =~/WG4/ ||it =~/WG3/ ||it =~/EV8/||it =~/LIB/}
-        .set { rest_channel }
-
-        av1_channel.concat(rest_channel)
-        .set { std_fq_input_ch }
-        std_fq_input_ch.view()
-    PREPROCESS(std_fq_input_ch)
-    }
-}
-
-*/
-
-
-/*
 workflow.onComplete {
 
     // Extract the first six digits from the samplesheet name
@@ -350,7 +298,7 @@ workflow.onComplete {
 
 
             // Send email using the built-in sendMail function
-            sendMail(to: 'Andreas.Braae.Holmgaard@rsyd.dk,Annabeth.Hogh.Petersen@rsyd.dk,Isabella.Almskou@rsyd.dk,Jesper.Graakjaer@rsyd.dk,Lene.Bjornkjaer@rsyd.dk,Martin.Sokol@rsyd.dk,Mads.Jorgensen@rsyd.dk,Rasmus.Hojrup.Pausgaard@rsyd.dk,Signe.Skou.Tofteng@rsyd.dk', subject: 'Demultiplexing pipeline Update', body: body)
+            sendMail(to: 'Mads.Jorgensen@rsyd.dk,Rasmus.Hojrup.Pausgaard@rsyd.dk', subject: 'Demultiplexing pipeline Update', body: body)
         }
     }
 
@@ -360,5 +308,3 @@ workflow.onComplete {
         "rm -rf ${workflow.workDir}".execute()
     }
 }
-
-*/
