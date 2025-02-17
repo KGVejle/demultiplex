@@ -265,7 +265,7 @@ workflow {
         | set {readsInputBranched}
         
         readsInputBranched.undetermined.concat(readsInputBranched.MV1).concat(readsInputBranched.WES).concat(readsInputBranched.WGS)
-        | set {readsInputReMerged}  // Re-merge the data for the undetermined, MV1, WES, and WGS samples - i.e. only leave out plasma (CTDNA) samples.
+        | set {readsInputReMerged}  // Re-merge the data for the undetermined (i.e. AV1), MV1, WES, and WGS samples - i.e. only leave out plasma (CTDNA) samples.
 
     PREPROCESS(readsInputReMerged)  // standard preprocessing for all but CTDNA
     //fastq_to_ubam_umi(readsInputBranched.CTDNA) // preprocessing for CTDNA
