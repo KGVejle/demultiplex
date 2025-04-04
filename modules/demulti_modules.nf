@@ -157,7 +157,7 @@ qc_dir="${params.outdir}/QC/"
 if (!params.localStorage) {
 aln_output_dir="${dataStorage}/alignedData/${params.genome}/novaRuns/2025/"
 fastq_dir="${dataStorage}/fastqStorage/novaRuns/"
-qc_dir="${dataStorage}/fastqStorage/demultiQC/"
+qc_dir="${dataStorage}/fastqStorage/demultiQC/2025"
 }
 
 
