@@ -275,12 +275,26 @@ workflow {
 
 workflow.onComplete {
     println "Workflow færdiggjort. Starter Python-script..."
+
+    // Kør Python-script
     def command = "python /lnx01_data2/shared/testdata/test_scripts/BeautifulSoup_html.py"
     def proc = command.execute()
     proc.waitFor()
-    if( proc.exitValue() != 0 ) {
+    if (proc.exitValue() != 0) {
         println "Fejl ved kørsel af Python-script: ${proc.err.text}"
     } else {
         println "Python-script blev kørt succesfuldt."
+    }
+
+    // Håndter sletning af workDir baseret på --keepwork parameter
+    if (!params.keepwork && workflow.duration > 1200000 && workflow.success) {
+        println("Sletter work directory: ${workflow.workDir}")
+        def deleteProc = ["rm", "-rf", workflow.workDir.toString()].execute()
+        deleteProc.waitFor()
+        if (deleteProc.exitValue() != 0) {
+            println "Fejl ved sletning af work directory: ${deleteProc.err.text}"
+        } else {
+            println "Work directory blev slettet."
+        }
     }
 }
