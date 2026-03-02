@@ -155,9 +155,9 @@ qc_dir="${params.outdir}/QC/"
 }
 
 if (!params.localStorage) {
-aln_output_dir="${dataStorage}/alignedData/${params.genome}/novaRuns/2025/"
+aln_output_dir="${dataStorage}/alignedData/${params.genome}/novaRuns/2026/"
 fastq_dir="${dataStorage}/fastqStorage/novaRuns/"
-qc_dir="${dataStorage}/fastqStorage/demultiQC/2025"
+qc_dir="${dataStorage}/fastqStorage/demultiQC/2026"
 }
 
 
@@ -414,4 +414,5 @@ process fastq_to_ubam_umi {
     -O ${meta.id}.unmapped.umi.from.fq.bam
     """
 }
+
 
