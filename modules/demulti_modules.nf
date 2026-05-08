@@ -173,17 +173,23 @@ qc_dir="${dataStorage}/fastqStorage/demultiQC/2026"
 process prepare_DNA_samplesheet {
 
     input:
-    tuple val(samplesheet_basename), path(samplesheet)// from original_samplesheet1
+    tuple val(samplesheet_basename), path(samplesheet)
 
     output:
     path("*.DNA_SAMPLES.csv"), emit: std
     path("*.UMI.csv"), emit: umi
+
     script:
+    def extraSettings = params.miniseq
+        ? "OverrideCycles,${umiConvertDNA}\\nNoLaneSplitting,true"
+        : "OverrideCycles,${umiConvertDNA}\\nNoLaneSplitting,true\\nTrimUMI,0\\nCreateFastqIndexForReads,1"
 
     """
     cat ${samplesheet} | grep -v "RV1" > ${samplesheet_basename}.DNA_SAMPLES.csv
 
-    sed 's/Settings]/&\\nOverrideCycles,${umiConvertDNA}\\nNoLaneSplitting,true\\nTrimUMI,0\\nCreateFastqIndexForReads,1/' ${samplesheet_basename}.DNA_SAMPLES.csv > ${samplesheet_basename}.DNA_SAMPLES.UMI.csv
+    sed 's/Settings]/&\\n${extraSettings}/' \
+      ${samplesheet_basename}.DNA_SAMPLES.csv \
+      > ${samplesheet_basename}.DNA_SAMPLES.UMI.csv
     """
 }
 
