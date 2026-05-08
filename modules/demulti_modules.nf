@@ -132,19 +132,24 @@ if (params.useBasesMask) {
 }
 */
 
-if (params.RNA) {
-    umiConvertDNA="Y151;I8N2U9;I8N2;Y151"
-    umiConvertRNA="Y151;I10U9;I10;Y151"
+if (params.miniseq) {
+    umiConvertDNA = "Y151;I8;I8;Y151"
+    umiConvertRNA = "Y151;I8;I8;Y151"
+}
+else if (params.useBasesMask) {
+    umiConvertDNA = params.useBasesMask
+    umiConvertRNA = params.useBasesMask
+}
+else if (params.RNA) {
+    umiConvertDNA = "Y151;I8N2U9;I8N2;Y151"
+    umiConvertRNA = "Y151;I10U9;I10;Y151"
+}
+else {
+    umiConvertDNA = "Y151;I8U9;I8;Y151"
 }
 
-if (!params.RNA) {
-    umiConvertDNA="Y151;I8U9;I8;Y151"
-
-}
-
-if (!params.DNA) {
-    umiConvertDNA="Y151;I10U9;I10;Y151"
-
+if (!params.DNA && !params.miniseq && !params.useBasesMask) {
+    umiConvertDNA = "Y151;I10U9;I10;Y151"
 }
 
 
