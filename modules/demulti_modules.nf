@@ -230,29 +230,43 @@ i2 = int(reads[2].attrib["NumCycles"])
 r2 = int(reads[3].attrib["NumCycles"])
 
 
-# DNA requires:
-#   I1 = 8 index + optional spacer + 9 UMI
-#   I2 = 8 index + optional spacer
+# Determine DNA mask from the actual run structure.
+#
+# Supported layouts:
+#   8 / 8   -> I8 / I8               (no UMI; e.g. MiniSeq/non-UMI runs)
+#   17 / 8  -> I8U9 / I8             (DNA UMI)
+#   19 / 10 -> I8N2U9 / I8N2         (DNA UMI with 2 spacer cycles)
+#
+# A manually supplied --useBasesMask still takes precedence.
 
-pad1 = i1 - 8 - 9
-pad2 = i2 - 8
+forced_mask = "${params.useBasesMask ?: ''}".strip()
 
-if pad1 < 0 or pad2 < 0:
+if forced_mask:
+    override_cycles = forced_mask
+
+elif i1 == 8 and i2 == 8:
+    override_cycles = f"Y{r1};I8;I8;Y{r2}"
+
+elif i1 >= 17 and i2 >= 8:
+    pad1 = i1 - 17   # 8 sample-index + pad + 9 UMI
+    pad2 = i2 - 8    # 8 sample-index + optional pad
+
+    i1_mask = "I8"
+    if pad1:
+        i1_mask += f"N{pad1}"
+    i1_mask += "U9"
+
+    i2_mask = "I8"
+    if pad2:
+        i2_mask += f"N{pad2}"
+
+    override_cycles = f"Y{r1};{i1_mask};{i2_mask};Y{r2}"
+
+else:
     raise RuntimeError(
         f"Unsupported DNA index lengths from RunInfo.xml: "
         f"I1={i1}, I2={i2}"
     )
-
-i1_mask = "I8"
-if pad1:
-    i1_mask += f"N{pad1}"
-i1_mask += "U9"
-
-i2_mask = "I8"
-if pad2:
-    i2_mask += f"N{pad2}"
-
-override_cycles = f"Y{r1};{i1_mask};{i2_mask};Y{r2}"
 
 print(
     f"DNA RunInfo: R1={r1}, I1={i1}, I2={i2}, R2={r2}"
@@ -278,9 +292,15 @@ instrument = (
 #
 #   RC(index2), RC(index)
 #
-# Therefore correct the DNA samplesheet for MN instruments.
+# Therefore correct the DNA samplesheet only for the MN 19/10 layout
+# that was verified from Top_Unknown_Barcodes.csv.  Do not apply this
+# transformation blindly to 8/8 or 17/8 runs.
 
-swap_revcomp = instrument.upper().startswith("MN")
+swap_revcomp = (
+    instrument.upper().startswith("MN")
+    and i1 == 19
+    and i2 == 10
+)
 
 print(f"Instrument: {instrument or 'UNKNOWN'}")
 print(f"Swap/reverse-complement DNA indexes: {swap_revcomp}")
