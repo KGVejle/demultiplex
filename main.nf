@@ -199,9 +199,9 @@ workflow DEMULTIPLEX {
     xml_ch
     main:
     if (params.DNA) {
-        prepare_DNA_samplesheet(original_samplesheet)
-        bclConvert_DNA(runfolder_ch, prepare_DNA_samplesheet.out.umi, xml_ch)
-    }
+    prepare_DNA_samplesheet(original_samplesheet, xml_ch)
+    bclConvert_DNA(runfolder_ch, prepare_DNA_samplesheet.out.umi, xml_ch)
+}
     if (params.RNA) {
         prepare_RNA_samplesheet(original_samplesheet)
         bclConvert_RNA(runfolder_ch, prepare_RNA_samplesheet.out.umi, xml_ch)
