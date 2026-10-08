@@ -393,9 +393,13 @@ if swap_revcomp:
 settings = [
     ["OverrideCycles", override_cycles],
     ["NoLaneSplitting", "true"],
-    ["TrimUMI", "0"],
-    ["CreateFastqIndexForReads", "1"],
 ]
+
+# TrimUMI is only valid when OverrideCycles actually defines UMI bases.
+# BCL Convert 4.3.6 aborts if TrimUMI is present for a non-UMI mask
+# such as Y151;I8;I8;Y151.
+if "U" in override_cycles.upper():
+    settings.append(["TrimUMI", "0"])
 
 
 # Remove old versions of settings we control.
@@ -464,7 +468,11 @@ process prepare_RNA_samplesheet {
     sed -n '1,/Sample_ID/p' ${samplesheet} > ${samplesheet_basename}.HEADER.txt
     cat ${samplesheet_basename}.HEADER.txt ${samplesheet_basename}.RNAsamples.intermediate.txt > ${samplesheet_basename}.RNA_SAMPLES.csv 
 
-    sed 's/Settings]/&\\nOverrideCycles,${umiConvertRNA}\\nNoLaneSplitting,true\\nTrimUMI,0\\nCreateFastqIndexForReads,1/' ${samplesheet_basename}.RNA_SAMPLES.csv > ${samplesheet_basename}.RNA_SAMPLES.UMI.csv
+    if [[ "${umiConvertRNA}" == *U* ]]; then
+        sed 's/Settings]/&\\nOverrideCycles,${umiConvertRNA}\\nNoLaneSplitting,true\\nTrimUMI,0/' ${samplesheet_basename}.RNA_SAMPLES.csv > ${samplesheet_basename}.RNA_SAMPLES.UMI.csv
+    else
+        sed 's/Settings]/&\\nOverrideCycles,${umiConvertRNA}\\nNoLaneSplitting,true/' ${samplesheet_basename}.RNA_SAMPLES.csv > ${samplesheet_basename}.RNA_SAMPLES.UMI.csv
+    fi
     """
 }
 
