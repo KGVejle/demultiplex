@@ -296,11 +296,7 @@ instrument = (
 # that was verified from Top_Unknown_Barcodes.csv.  Do not apply this
 # transformation blindly to 8/8 or 17/8 runs.
 
-swap_revcomp = (
-    instrument.upper().startswith("MN")
-    and i1 == 19
-    and i2 == 10
-)
+swap_revcomp = instrument.upper().startswith("MN")
 
 print(f"Instrument: {instrument or 'UNKNOWN'}")
 print(f"Swap/reverse-complement DNA indexes: {swap_revcomp}")
