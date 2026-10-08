@@ -174,22 +174,258 @@ process prepare_DNA_samplesheet {
 
     input:
     tuple val(samplesheet_basename), path(samplesheet)
+    path(runinfo)
 
     output:
     path("*.DNA_SAMPLES.csv"), emit: std
     path("*.UMI.csv"), emit: umi
 
     script:
-    def extraSettings = params.miniseq
-        ? "OverrideCycles,${umiConvertDNA}\\nNoLaneSplitting,true"
-        : "OverrideCycles,${umiConvertDNA}\\nNoLaneSplitting,true\\nTrimUMI,0\\nCreateFastqIndexForReads,1"
-
     """
-    cat ${samplesheet} | grep -v "RV1" > ${samplesheet_basename}.DNA_SAMPLES.csv
+    # ---------------------------------------------------------
+    # Keep DNA samples only
+    # ---------------------------------------------------------
 
-    sed 's/Settings]/&\\n${extraSettings}/' \
-      ${samplesheet_basename}.DNA_SAMPLES.csv \
-      > ${samplesheet_basename}.DNA_SAMPLES.UMI.csv
+    grep -v "RV1" ${samplesheet} > ${samplesheet_basename}.DNA_SAMPLES.csv
+
+
+    # ---------------------------------------------------------
+    # Read run structure from RunInfo.xml
+    #
+    # DNA layout:
+    #   Index 1 = 8 bp sample index + optional N + 9 bp UMI
+    #   Index 2 = 8 bp sample index + optional N
+    #
+    # Examples:
+    #   17 / 8  -> I8U9 / I8
+    #   19 / 10 -> I8N2U9 / I8N2
+    # ---------------------------------------------------------
+
+    python3 - <<'PY'
+import csv
+import xml.etree.ElementTree as ET
+from pathlib import Path
+
+samplesheet = Path("${samplesheet_basename}.DNA_SAMPLES.csv")
+output      = Path("${samplesheet_basename}.DNA_SAMPLES.UMI.csv")
+runinfo     = Path("${runinfo}")
+
+
+# ---------------------------------------------------------
+# Parse RunInfo.xml
+# ---------------------------------------------------------
+
+root = ET.parse(runinfo).getroot()
+
+reads = root.findall(".//Read")
+
+if len(reads) < 4:
+    raise RuntimeError(
+        f"Expected at least 4 reads in RunInfo.xml, found {len(reads)}"
+    )
+
+r1 = int(reads[0].attrib["NumCycles"])
+i1 = int(reads[1].attrib["NumCycles"])
+i2 = int(reads[2].attrib["NumCycles"])
+r2 = int(reads[3].attrib["NumCycles"])
+
+
+# DNA requires:
+#   I1 = 8 index + optional spacer + 9 UMI
+#   I2 = 8 index + optional spacer
+
+pad1 = i1 - 8 - 9
+pad2 = i2 - 8
+
+if pad1 < 0 or pad2 < 0:
+    raise RuntimeError(
+        f"Unsupported DNA index lengths from RunInfo.xml: "
+        f"I1={i1}, I2={i2}"
+    )
+
+i1_mask = "I8"
+if pad1:
+    i1_mask += f"N{pad1}"
+i1_mask += "U9"
+
+i2_mask = "I8"
+if pad2:
+    i2_mask += f"N{pad2}"
+
+override_cycles = f"Y{r1};{i1_mask};{i2_mask};Y{r2}"
+
+print(
+    f"DNA RunInfo: R1={r1}, I1={i1}, I2={i2}, R2={r2}"
+)
+print(
+    f"DNA OverrideCycles: {override_cycles}"
+)
+
+
+# ---------------------------------------------------------
+# Instrument
+# ---------------------------------------------------------
+
+instrument_node = root.find(".//Instrument")
+instrument = (
+    instrument_node.text.strip()
+    if instrument_node is not None and instrument_node.text
+    else ""
+)
+
+# Your MN02212 data show that the index pair reaching
+# BCL Convert is:
+#
+#   RC(index2), RC(index)
+#
+# Therefore correct the DNA samplesheet for MN instruments.
+
+swap_revcomp = instrument.upper().startswith("MN")
+
+print(f"Instrument: {instrument or 'UNKNOWN'}")
+print(f"Swap/reverse-complement DNA indexes: {swap_revcomp}")
+
+
+def revcomp(seq):
+    table = str.maketrans(
+        "ACGTNacgtn",
+        "TGCANtgcan"
+    )
+    return seq.translate(table)[::-1]
+
+
+# ---------------------------------------------------------
+# Read samplesheet as raw rows
+# ---------------------------------------------------------
+
+with samplesheet.open(newline="") as fh:
+    rows = list(csv.reader(fh))
+
+
+# Find Data header containing Sample_ID/index/index2
+header_idx = None
+
+for n, row in enumerate(rows):
+    stripped = [x.strip() for x in row]
+
+    if (
+        "Sample_ID" in stripped
+        and "index" in stripped
+        and "index2" in stripped
+    ):
+        header_idx = n
+        break
+
+if header_idx is None:
+    raise RuntimeError(
+        "Could not locate Sample_ID/index/index2 header in samplesheet"
+    )
+
+
+header = rows[header_idx]
+
+sample_col = header.index("Sample_ID")
+index_col  = header.index("index")
+index2_col = header.index("index2")
+
+
+# ---------------------------------------------------------
+# Transform MN index orientation
+# ---------------------------------------------------------
+
+if swap_revcomp:
+
+    print("Converting DNA indexes:")
+    print("  new index  = RC(old index2)")
+    print("  new index2 = RC(old index)")
+
+    for row in rows[header_idx + 1:]:
+
+        if not row or len(row) <= max(index_col, index2_col):
+            continue
+
+        # Skip section headers / empty data
+        if not row[sample_col].strip():
+            continue
+
+        old_i1 = row[index_col].strip()
+        old_i2 = row[index2_col].strip()
+
+        if not old_i1 or not old_i2:
+            continue
+
+        new_i1 = revcomp(old_i2)
+        new_i2 = revcomp(old_i1)
+
+        print(
+            f"  {row[sample_col]}: "
+            f"{old_i1}/{old_i2} -> {new_i1}/{new_i2}"
+        )
+
+        row[index_col]  = new_i1
+        row[index2_col] = new_i2
+
+
+# ---------------------------------------------------------
+# Insert / replace BCLConvert settings
+# ---------------------------------------------------------
+
+settings = [
+    ["OverrideCycles", override_cycles],
+    ["NoLaneSplitting", "true"],
+    ["TrimUMI", "0"],
+    ["CreateFastqIndexForReads", "1"],
+]
+
+
+# Remove old versions of settings we control.
+remove_keys = {
+    "OverrideCycles",
+    "NoLaneSplitting",
+    "TrimUMI",
+    "CreateFastqIndexForReads",
+    "ReverseComplement",
+}
+
+cleaned = []
+
+for row in rows:
+    if row and row[0].strip() in remove_keys:
+        continue
+
+    cleaned.append(row)
+
+rows = cleaned
+
+
+# Find Settings section
+settings_idx = None
+
+for n, row in enumerate(rows):
+    if row and row[0].strip() in {
+        "[Settings]",
+        "[BCLConvert_Settings]",
+    }:
+        settings_idx = n
+        break
+
+if settings_idx is None:
+    raise RuntimeError(
+        "Could not locate [Settings] or [BCLConvert_Settings] section"
+    )
+
+
+for offset, setting in enumerate(settings, start=1):
+    rows.insert(settings_idx + offset, setting)
+
+
+with output.open("w", newline="") as fh:
+    writer = csv.writer(fh, lineterminator="\\n")
+    writer.writerows(rows)
+
+print(f"Wrote corrected samplesheet: {output}")
+
+PY
     """
 }
 
